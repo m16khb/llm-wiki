@@ -24,6 +24,10 @@ Use `go run ./cmd/llm-wiki ...` during development and the installed `llm-wiki` 
 - Append history: `llm-wiki log <path> append --op <op> --message <text>`
 - Build context: `llm-wiki graph <path> --json` and `llm-wiki query-pack <path> "<question>" --json`
 
+## MCP
+
+Run `llm-wiki mcp` as a stdio MCP server. Initial tools are `llm_wiki_validate`, `llm_wiki_lint`, `llm_wiki_index`, `llm_wiki_graph`, and `llm_wiki_query_pack`. These tools call the same internal service packages used by the CLI.
+
 ## Host Integrations
 
 Claude Code, Codex, Reasonix, and portable agents should use the same CLI/MCP surface. See `packages/hosts/*` for example hook/settings files. Host adapters are allowed to format host settings but must not duplicate OKF core logic.

@@ -38,6 +38,7 @@ llm-wiki query-pack <path> "<question>" --json
 llm-wiki import nvk <source> <dest> --dry-run
 llm-wiki export nvk <source> <dest> --dry-run
 llm-wiki hook <event> --host <claude|codex|reasonix> --json
+llm-wiki mcp
 ```
 
 The stable validation DTO starts as:
@@ -66,10 +67,21 @@ source metadata.
 Host packages in `packages/hosts/` are intentionally thin. They document how a
 host should invoke the same `llm-wiki` binary without duplicating core logic.
 
+## MCP Tools
+
+`llm-wiki mcp` runs an MCP stdio server backed by the same service layer as the
+CLI. Initial tools:
+
+- `llm_wiki_validate`
+- `llm_wiki_lint`
+- `llm_wiki_index`
+- `llm_wiki_graph`
+- `llm_wiki_query_pack`
+
 ## Verification
 
 ```bash
-gofmt -w .
+gofmt -w cmd internal
 go vet ./...
 go test ./...
 go run ./cmd/llm-wiki --version

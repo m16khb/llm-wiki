@@ -25,7 +25,10 @@ func ParseMarkdown(input []byte) (*Markdown, error) {
 	}
 	yml := text[len("---\n") : len("---\n")+end]
 	rest := text[len("---\n")+end+len("\n---"):]
-	if strings.HasPrefix(rest, "\n") {
+	if rest != "" {
+		if !strings.HasPrefix(rest, "\n") {
+			return nil, fmt.Errorf("frontmatter end marker must be on its own line")
+		}
 		rest = rest[1:]
 	}
 	var doc yaml.Node
@@ -38,6 +41,17 @@ func ParseMarkdown(input []byte) (*Markdown, error) {
 		return nil, fmt.Errorf("frontmatter must be a YAML mapping")
 	}
 	return &Markdown{node: doc.Content[0], body: []byte(rest), hasYML: true}, nil
+}
+
+func (m *Markdown) Keys() []string {
+	if m == nil || m.node == nil {
+		return nil
+	}
+	keys := make([]string, 0, len(m.node.Content)/2)
+	for i := 0; i+1 < len(m.node.Content); i += 2 {
+		keys = append(keys, m.node.Content[i].Value)
+	}
+	return keys
 }
 
 func (m *Markdown) HasFrontmatter() bool {

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/m16khb/llm-wiki/internal/frontmatter"
 )
@@ -16,11 +17,13 @@ const Version = "0.1"
 var ReservedFiles = []string{"index.md", "log.md"}
 
 type Concept struct {
-	RelPath string
-	AbsPath string
-	Type    string
-	Title   string
-	Body    string
+	RelPath        string
+	AbsPath        string
+	Type           string
+	Title          string
+	Body           string
+	HasFrontmatter bool
+	ValidUTF8      bool
 }
 
 type Bundle struct {
@@ -65,16 +68,26 @@ func Scan(root string) (*Bundle, error) {
 		if err != nil {
 			return err
 		}
+		if !utf8.Valid(data) {
+			bundle.Concepts = append(bundle.Concepts, Concept{
+				RelPath:   rel,
+				AbsPath:   path,
+				ValidUTF8: false,
+			})
+			return nil
+		}
 		md, err := frontmatter.ParseMarkdown(data)
 		if err != nil {
 			return fmt.Errorf("%s: %w", rel, err)
 		}
 		bundle.Concepts = append(bundle.Concepts, Concept{
-			RelPath: rel,
-			AbsPath: path,
-			Type:    md.GetString("type"),
-			Title:   titleOrStem(md.GetString("title"), rel),
-			Body:    string(md.Body()),
+			RelPath:        rel,
+			AbsPath:        path,
+			Type:           md.GetString("type"),
+			Title:          titleOrStem(md.GetString("title"), rel),
+			Body:           string(md.Body()),
+			HasFrontmatter: md.HasFrontmatter(),
+			ValidUTF8:      true,
 		})
 		return nil
 	})
@@ -126,7 +139,7 @@ func SafeWritePath(root, rel string) (string, error) {
 
 func isReserved(rel string) bool {
 	for _, reserved := range ReservedFiles {
-		if rel == reserved {
+		if filepath.Base(filepath.FromSlash(rel)) == reserved {
 			return true
 		}
 	}

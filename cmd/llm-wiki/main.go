@@ -293,7 +293,7 @@ func mcpCmd() *cobra.Command {
 		Use:   "mcp",
 		Short: "Run the llm-wiki MCP stdio adapter",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return writeJSON(cmd, map[string]any{"ok": true, "transport": "stdio", "tools": mcp.Tools()})
+			return mcp.RunStdio(cmd.Context())
 		},
 	}
 }

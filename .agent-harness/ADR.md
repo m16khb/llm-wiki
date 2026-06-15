@@ -87,3 +87,23 @@ Record structural choices, rejected alternatives, and decisions that affect long
   - Keep only upstream links
   - Copy excerpts into compatibility docs
   - Track only JSON schema
+
+## 2026-06-15 — SDK-backed MCP server and stricter OKF conformance
+
+- Kind: `adr`
+- Source: codex implementation
+- Summary: MCP now uses the Go MCP SDK for real tools/list and tools/call behavior, and validate enforces OKF v0.1 hard conformance beyond missing type.
+- Context: The user selected follow-up options 1 and 2: implement the actual MCP stdio JSON-RPC handler and strengthen OKF spec-based validation.
+- Decision: Use the Go MCP SDK in `internal/mcp` with tools backed by existing service packages, and keep hard validation limited to OKF conformance while preserving lint for soft quality warnings.
+- Consequences: Future CLI behavior changes should be reflected in MCP service tools, and future validation additions must distinguish OKF hard conformance from lint-only quality guidance.
+- Evidence:
+  - internal/mcp/mcp.go
+  - internal/mcp/mcp_test.go
+  - internal/validate/validate.go
+  - internal/validate/validate_test.go
+  - third_party/google-okf/SPEC.md
+  - docs/okf-v0.1-compat.md
+- Alternatives / rejected options:
+  - Keep `llm-wiki mcp` as a ready JSON placeholder
+  - Implement ad hoc JSON-RPC manually without the SDK
+  - Move broken links into validation errors
