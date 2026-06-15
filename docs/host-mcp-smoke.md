@@ -1,7 +1,7 @@
 # Host MCP Smoke Tests
 
-`llm-wiki` exposes one stdio MCP server for Claude Code, Codex, Reasonix, and
-portable MCP clients:
+`llm-wiki` currently exposes one direct stdio MCP server for Claude Code, Codex,
+Reasonix, and portable MCP clients:
 
 ```bash
 llm-wiki mcp
@@ -11,6 +11,10 @@ The host packages under `packages/hosts/` are templates only. They must keep
 calling the shared binary instead of reimplementing OKF validation, linting,
 indexing, graphing, or query-pack logic.
 
+Daemon-backed MCP is reserved for a future opt-in through
+`llm-wiki mcp --daemon`. It is not implemented yet, and host templates must
+continue to use plain `llm-wiki mcp`.
+
 ## Baseline
 
 Run these checks before debugging a host-specific configuration:
@@ -18,6 +22,7 @@ Run these checks before debugging a host-specific configuration:
 ```bash
 go test ./internal/mcp
 go run ./cmd/llm-wiki mcp < /dev/null
+go run ./cmd/llm-wiki daemon status --json
 go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
 go run ./cmd/llm-wiki query-pack fixtures/okf-minimal alpha --json
 ```
@@ -25,6 +30,7 @@ go run ./cmd/llm-wiki query-pack fixtures/okf-minimal alpha --json
 `go run ./cmd/llm-wiki mcp < /dev/null` should exit `0`. It only proves that the
 stdio server starts and handles EOF; `go test ./internal/mcp` verifies tool
 listing and representative calls through the Go MCP SDK in-memory transport.
+Future daemon support must not break this direct MCP smoke path.
 
 ## Host CLI Probe
 

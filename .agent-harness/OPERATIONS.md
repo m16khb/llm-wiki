@@ -33,7 +33,11 @@ Baseline MCP smoke:
 ```bash
 go test ./internal/mcp
 go run ./cmd/llm-wiki mcp < /dev/null
+go run ./cmd/llm-wiki daemon status --json
 ```
+
+`llm-wiki mcp --daemon` is reserved for future daemon-backed MCP and currently
+returns an unsupported error. Keep host configuration on plain `llm-wiki mcp`.
 
 ## Host Integrations
 
@@ -42,6 +46,17 @@ Claude Code, Codex, Reasonix, and portable agents should use the same CLI/MCP su
 ## Runtime State
 
 Hook event logging writes redacted JSONL under `.llm-wiki/hooks.jsonl` inside the current workspace. `.llm-wiki/` is ignored by git. Logs use file locks and payload caps; hooks should stay fast and should not perform model calls.
+
+The daemon skeleton resolves future runtime state in this order:
+
+1. `LLM_WIKI_STATE_DIR`
+2. `$XDG_STATE_HOME/llm-wiki`
+3. `~/.local/state/llm-wiki`
+
+Reserved daemon files are `daemon.sock`, `daemon.pid`, and `daemon.lock`.
+`daemon status` and `daemon doctor` are safe probes. `daemon start` and
+`daemon stop` are unsupported and must not create runtime files until the daemon
+runtime is intentionally implemented.
 
 ## Project Docs
 

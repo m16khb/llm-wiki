@@ -128,3 +128,24 @@ Record structural choices, rejected alternatives, and decisions that affect long
   - Add host-specific plugins with duplicated OKF behavior
   - Rely only on prose examples without machine-checked CLI snapshots
   - Require installed host agents in normal test runs
+
+## 2026-06-15 — Reserve daemon CLI contract without runtime
+
+- Kind: `adr`
+- Source: codex implementation
+- Summary: The project exposes a side-effect-free `llm-wiki daemon` skeleton while keeping direct stdio MCP as the supported runtime.
+- Context: Future daemon-backed MCP may need stable command names, state paths, and JSON DTOs, but no current workflow requires a process supervisor, socket listener, cache, watcher, or worker queue.
+- Decision: Add `internal/daemon` for path resolution and structured status/doctor/start/stop results. `daemon status` and `daemon doctor` exit `0`; `daemon start` and `daemon stop` emit unsupported DTOs and exit `2`; `llm-wiki mcp --daemon` returns an unsupported error while plain `llm-wiki mcp` remains unchanged.
+- Consequences: Future daemon work can implement behind the reserved contract, but host integrations must keep using direct `llm-wiki mcp` until a later ADR changes the runtime. Tests must verify that the skeleton does not rely on host state or real daemon files.
+- Evidence:
+  - internal/daemon/daemon.go
+  - internal/daemon/daemon_test.go
+  - cmd/llm-wiki/main.go
+  - internal/snapshots/snapshots_test.go
+  - docs/daemon-design.md
+  - docs/host-mcp-smoke.md
+  - .github/workflows/ci.yml
+- Alternatives / rejected options:
+  - Implement a daemon process now
+  - Keep daemon support as prose-only design
+  - Make host templates opt into `llm-wiki mcp --daemon` before the runtime exists

@@ -12,9 +12,16 @@ import (
 
 func TestCLIGoldenSnapshots(t *testing.T) {
 	repo := repoRoot(t)
+	bin := filepath.Join(t.TempDir(), "llm-wiki")
+	build := exec.Command("go", "build", "-o", bin, "./cmd/llm-wiki")
+	build.Dir = repo
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build CLI: %v\n%s", err, out)
+	}
 	cases := []struct {
 		name string
 		args []string
+		env  []string
 		code int
 	}{
 		{
@@ -32,12 +39,37 @@ func TestCLIGoldenSnapshots(t *testing.T) {
 			args: []string{"query-pack", "fixtures/okf-minimal", "alpha", "--json"},
 			code: 0,
 		},
+		{
+			name: "daemon-status",
+			args: []string{"daemon", "status", "--json"},
+			env:  []string{"LLM_WIKI_STATE_DIR=" + filepath.Join(repo, "testdata", "runtime-state")},
+			code: 0,
+		},
+		{
+			name: "daemon-doctor",
+			args: []string{"daemon", "doctor", "--json"},
+			env:  []string{"LLM_WIKI_STATE_DIR=" + filepath.Join(repo, "testdata", "runtime-state")},
+			code: 0,
+		},
+		{
+			name: "daemon-start",
+			args: []string{"daemon", "start", "--json"},
+			env:  []string{"LLM_WIKI_STATE_DIR=" + filepath.Join(repo, "testdata", "runtime-state")},
+			code: 2,
+		},
+		{
+			name: "daemon-stop",
+			args: []string{"daemon", "stop", "--json"},
+			env:  []string{"LLM_WIKI_STATE_DIR=" + filepath.Join(repo, "testdata", "runtime-state")},
+			code: 2,
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			cmd := exec.Command("go", append([]string{"run", "./cmd/llm-wiki"}, tc.args...)...)
+			cmd := exec.Command(bin, tc.args...)
 			cmd.Dir = repo
+			cmd.Env = append(os.Environ(), tc.env...)
 			var stdout bytes.Buffer
 			var stderr bytes.Buffer
 			cmd.Stdout = &stdout

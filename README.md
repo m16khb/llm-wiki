@@ -38,6 +38,7 @@ llm-wiki query-pack <path> "<question>" --json
 llm-wiki import nvk <source> <dest> --dry-run
 llm-wiki export nvk <source> <dest> --dry-run
 llm-wiki hook <event> --host <claude|codex|reasonix> --json
+llm-wiki daemon status --json
 llm-wiki mcp
 ```
 
@@ -69,6 +70,22 @@ host should invoke the same `llm-wiki` binary without duplicating core logic.
 See [docs/host-mcp-smoke.md](docs/host-mcp-smoke.md) for Claude Code, Codex,
 Reasonix, and portable MCP smoke-test steps.
 
+## Runtime Strategy
+
+The supported runtime path is direct stdio MCP:
+
+```bash
+llm-wiki mcp
+```
+
+`llm-wiki daemon status --json` exposes reserved future state and IPC paths, but
+the daemon runtime is not implemented yet. `daemon start` and `daemon stop`
+return structured unsupported results and do not create processes, sockets, PID
+files, lock files, or state directories. `llm-wiki mcp --daemon` is reserved for
+future daemon-backed MCP and currently returns an unsupported error.
+
+See [docs/daemon-design.md](docs/daemon-design.md) for the daemon contract.
+
 ## MCP Tools
 
 `llm-wiki mcp` runs an MCP stdio server backed by the same service layer as the
@@ -88,6 +105,7 @@ go vet ./...
 go test ./...
 go test ./internal/snapshots
 go run ./cmd/llm-wiki --version
+go run ./cmd/llm-wiki daemon status --json
 go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
 go run ./cmd/llm-wiki validate fixtures/okf-invalid-missing-type --json
 ```

@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/m16khb/llm-wiki/internal/daemon"
 	"github.com/m16khb/llm-wiki/internal/graph"
 	"github.com/m16khb/llm-wiki/internal/hooks"
 	"github.com/m16khb/llm-wiki/internal/importexport"
@@ -40,7 +42,7 @@ func rootCmd() *cobra.Command {
 		SilenceErrors: true,
 	}
 	cmd.SetVersionTemplate("llm-wiki {{.Version}}\n")
-	cmd.AddCommand(initCmd(), validateCmd(), lintCmd(), indexCmd(), logCmd(), graphCmd(), queryPackCmd(), importCmd(), exportCmd(), hookCmd(), mcpCmd())
+	cmd.AddCommand(initCmd(), validateCmd(), lintCmd(), indexCmd(), logCmd(), graphCmd(), queryPackCmd(), importCmd(), exportCmd(), hookCmd(), daemonCmd(), mcpCmd())
 	return cmd
 }
 
@@ -288,14 +290,56 @@ func hookCmd() *cobra.Command {
 	return cmd
 }
 
+func daemonCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "daemon",
+		Short: "Inspect reserved llm-wiki daemon runtime state",
+	}
+	cmd.AddCommand(daemonActionCmd("status", daemon.Status, 0), daemonActionCmd("doctor", daemon.Doctor, 0), daemonActionCmd("start", daemon.Start, 2), daemonActionCmd("stop", daemon.Stop, 2))
+	return cmd
+}
+
+func daemonActionCmd(action string, run func() (daemon.Result, error), unsupportedCode int) *cobra.Command {
+	var jsonOut bool
+	cmd := &cobra.Command{
+		Use:  action,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			result, err := run()
+			if err != nil && !errors.Is(err, daemon.ErrUnsupported) {
+				return err
+			}
+			if jsonOut {
+				if writeErr := writeJSON(cmd, result); writeErr != nil {
+					return writeErr
+				}
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "ok=%v implemented=%v running=%v state_dir=%s\n", result.OK, result.Implemented, result.Running, result.StateDir)
+			}
+			if errors.Is(err, daemon.ErrUnsupported) {
+				return silentExit{code: unsupportedCode}
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "emit JSON")
+	return cmd
+}
+
 func mcpCmd() *cobra.Command {
-	return &cobra.Command{
+	var useDaemon bool
+	cmd := &cobra.Command{
 		Use:   "mcp",
 		Short: "Run the llm-wiki MCP stdio adapter",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if useDaemon {
+				return fmt.Errorf("daemon-backed MCP is not implemented; use llm-wiki mcp for direct stdio MCP")
+			}
 			return mcp.RunStdio(cmd.Context())
 		},
 	}
+	cmd.Flags().BoolVar(&useDaemon, "daemon", false, "use daemon-backed MCP transport")
+	return cmd
 }
 
 type silentExit struct {

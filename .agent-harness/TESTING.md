@@ -15,8 +15,10 @@ go vet ./...
 go test ./...
 go test ./internal/snapshots
 go run ./cmd/llm-wiki --version
+go run ./cmd/llm-wiki daemon status --json
 go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
 go run ./cmd/llm-wiki validate fixtures/okf-invalid-missing-type --json
+go run ./cmd/llm-wiki mcp < /dev/null
 ```
 
 The invalid fixture is expected to return exit code 1 while emitting the validation DTO with `ok: false`.
@@ -41,6 +43,7 @@ Current tests cover:
 - query-pack bounded context and no synthesized answer
 - MCP SDK in-memory server tool listing and `llm_wiki_validate`/`llm_wiki_query_pack` calls
 - normalized CLI JSON golden snapshots for validation and query-pack DTOs
+- daemon state-path resolution, unsupported start/stop behavior, and daemon CLI JSON snapshots
 - fixture-level NVK dry-run planning
 
 ## Test Style

@@ -19,6 +19,7 @@ description: System structure, component boundaries, and responsibilities.
 - `internal/index`, `internal/logstore`: deterministic index writing and locked append-only log writes.
 - `internal/graph`, `internal/querypack`: deterministic graph and bounded context output; query-pack never answers.
 - `internal/hooks`: host-shaped hook output plus redacted JSONL event logging with file locks.
+- `internal/daemon`: side-effect-free daemon contract skeleton, state/IPC path resolution, and unsupported start/stop DTOs. It reserves future runtime paths without creating processes, sockets, PID files, lock files, directories, goroutines, or listeners.
 - `internal/mcp`: Go MCP SDK server that exposes the same service semantics as CLI through `llm_wiki_validate`, `llm_wiki_lint`, `llm_wiki_index`, `llm_wiki_graph`, and `llm_wiki_query_pack`.
 - `internal/importexport`: fixture-level NVK import/export planning and dry-run behavior.
 - `packages/hosts/{claude,codex,reasonix,portable}`: host integration notes/templates only, including MCP config examples; no duplicated OKF core logic.
@@ -30,3 +31,7 @@ OKF v0.1 compatibility is documented in `docs/okf-v0.1-compat.md`. Host MCP smok
 ## Host-Neutral Rule
 
 Claude Code, Codex, Reasonix, and portable agents should invoke the same CLI/MCP behavior. Host-specific packages may provide settings, hooks, MCP config templates, or skill wrapper text, but must not implement separate validation, linting, graph, index, log, or query-pack logic.
+
+## Runtime Strategy
+
+Direct `llm-wiki mcp` stdio remains the default and supported MCP runtime. `llm-wiki daemon` reserves future state and IPC paths for a daemon runtime, and `llm-wiki mcp --daemon` reserves the future daemon-backed MCP opt-in, but both report that the daemon runtime is not implemented. Host templates must keep using plain `llm-wiki mcp` until a later ADR implements and verifies the runtime.

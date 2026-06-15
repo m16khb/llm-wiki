@@ -20,6 +20,7 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
       - run: go run ./cmd/llm-wiki --version
+      - run: go run ./cmd/llm-wiki daemon status --json
       - run: go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
       - run: |
           if go run ./cmd/llm-wiki validate fixtures/okf-invalid-missing-type --json; then

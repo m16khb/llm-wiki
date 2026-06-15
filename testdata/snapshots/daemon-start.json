@@ -1,0 +1,14 @@
+{
+  "action": "start",
+  "implemented": false,
+  "lock_path": "$REPO/testdata/runtime-state/daemon.lock",
+  "message": "daemon runtime is not implemented; use llm-wiki mcp for direct stdio MCP",
+  "ok": false,
+  "pid_path": "$REPO/testdata/runtime-state/daemon.pid",
+  "running": false,
+  "socket_path": "$REPO/testdata/runtime-state/daemon.sock",
+  "state_dir": "$REPO/testdata/runtime-state",
+  "warnings": [
+    "daemon runtime is not implemented"
+  ]
+}
