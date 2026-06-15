@@ -6,9 +6,14 @@ the CLI or MCP server.
 
 ## MCP
 
-For a project-scoped MCP server, use the template in
-`packages/hosts/claude/mcp.example.json` as the contents of a project-root
-`.mcp.json`, or add the same server with:
+Prefer the shared setup command:
+
+```bash
+llm-wiki setup-hosts --apply --json
+```
+
+For manual setup, use the template in `packages/hosts/claude/mcp.example.json`
+as the contents of a project-root `.mcp.json`, or add the same server with:
 
 ```bash
 claude mcp add --transport stdio --scope project llm-wiki -- llm-wiki mcp

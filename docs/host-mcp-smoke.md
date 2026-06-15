@@ -38,6 +38,25 @@ These checks confirm that the host CLI can see an `llm-wiki` MCP entry without
 modifying the user's normal host configuration. They do not approve tools or run
 an LLM session.
 
+## First-Time Setup
+
+Use the shared setup command before host-specific debugging:
+
+```bash
+llm-wiki setup-hosts --json
+llm-wiki setup-hosts --apply --json
+```
+
+The dry-run reports the files that would change. `--apply` writes:
+
+- Codex user MCP config at `~/.codex/config.toml`
+- Claude Code project MCP config at `.mcp.json`
+- Reasonix project plugin config at `reasonix.toml`
+
+All three entries call the same `llm-wiki mcp` binary. The command does not
+remove legacy plugins or caches; clean those up separately if a host still loads
+an old integration.
+
 Claude Code:
 
 ```bash
@@ -82,7 +101,8 @@ Expected Reasonix list output includes `llm-wiki (stdio) llm-wiki mcp`.
 
 ## Claude Code
 
-Use `packages/hosts/claude/mcp.example.json` as project-root `.mcp.json`, or run:
+Prefer `llm-wiki setup-hosts --apply`. For manual setup, use
+`packages/hosts/claude/mcp.example.json` as project-root `.mcp.json`, or run:
 
 ```bash
 claude mcp add --transport stdio --scope project llm-wiki -- llm-wiki mcp
@@ -102,8 +122,9 @@ End-to-end confirmation:
 
 ## Codex
 
-Copy `packages/hosts/codex/config.example.toml` into `~/.codex/config.toml` or
-a trusted project `.codex/config.toml`:
+Prefer `llm-wiki setup-hosts --apply`. For manual setup, copy
+`packages/hosts/codex/config.example.toml` into `~/.codex/config.toml` or a
+trusted project `.codex/config.toml`:
 
 ```toml
 [mcp_servers.llm-wiki]
@@ -128,8 +149,9 @@ End-to-end confirmation:
 
 ## Reasonix
 
-Use `packages/hosts/reasonix/reasonix.example.toml` as a project
-`reasonix.toml` fragment:
+Prefer `llm-wiki setup-hosts --apply`. For manual setup, use
+`packages/hosts/reasonix/reasonix.example.toml` as a project `reasonix.toml`
+fragment:
 
 ```toml
 [[plugins]]

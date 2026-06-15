@@ -15,6 +15,19 @@ go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
 
 Use `go run ./cmd/llm-wiki ...` during development and the installed `llm-wiki` binary in host integrations.
 
+## Host Setup
+
+First-time host setup should use the shared setup command:
+
+```bash
+llm-wiki setup-hosts --json
+llm-wiki setup-hosts --apply --json
+```
+
+This writes Codex user MCP config plus project-local Claude Code and Reasonix
+MCP config that all call `llm-wiki mcp`. It intentionally does not delete old
+plugins or caches; legacy cleanup is a separate explicit maintenance step.
+
 ## OKF Bundle Workflow
 
 - Initialize: `llm-wiki init <path> --profile obsidian --okf-version 0.1`

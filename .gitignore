@@ -6,3 +6,5 @@ coverage.out
 .llm-wiki/
 .harness/
 .agent-harness/state/
+.mcp.json
+reasonix.toml

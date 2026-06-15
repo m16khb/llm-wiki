@@ -15,6 +15,7 @@ go vet ./...
 go test ./...
 go test ./internal/snapshots
 go run ./cmd/llm-wiki --version
+go run ./cmd/llm-wiki setup-hosts --json
 go run ./cmd/llm-wiki daemon status --json
 go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
 go run ./cmd/llm-wiki validate fixtures/okf-invalid-missing-type --json

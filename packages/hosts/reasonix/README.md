@@ -6,8 +6,14 @@ logic.
 
 ## MCP
 
-Use `packages/hosts/reasonix/reasonix.example.toml` as a project-level
-`reasonix.toml` fragment:
+Prefer the shared setup command:
+
+```bash
+llm-wiki setup-hosts --apply --json
+```
+
+For manual setup, use `packages/hosts/reasonix/reasonix.example.toml` as a
+project-level `reasonix.toml` fragment:
 
 ```toml
 [[plugins]]

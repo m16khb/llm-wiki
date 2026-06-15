@@ -38,6 +38,7 @@ llm-wiki query-pack <path> "<question>" --json
 llm-wiki import nvk <source> <dest> --dry-run
 llm-wiki export nvk <source> <dest> --dry-run
 llm-wiki hook <event> --host <claude|codex|reasonix> --json
+llm-wiki setup-hosts --apply --json
 llm-wiki daemon status --json
 llm-wiki mcp
 ```
@@ -69,6 +70,18 @@ Host packages in `packages/hosts/` are intentionally thin. They document how a
 host should invoke the same `llm-wiki` binary without duplicating core logic.
 See [docs/host-mcp-smoke.md](docs/host-mcp-smoke.md) for Claude Code, Codex,
 Reasonix, and portable MCP smoke-test steps.
+
+For first-time setup from an installed binary, run a dry-run first and then
+apply:
+
+```bash
+llm-wiki setup-hosts --json
+llm-wiki setup-hosts --apply --json
+```
+
+This writes Codex user MCP config plus project-local Claude Code and Reasonix
+MCP config that all call the same `llm-wiki mcp` binary. It does not remove old
+plugins or caches; delete legacy host integrations separately when needed.
 
 ## Runtime Strategy
 

@@ -10,6 +10,7 @@ import (
 	"github.com/m16khb/llm-wiki/internal/daemon"
 	"github.com/m16khb/llm-wiki/internal/graph"
 	"github.com/m16khb/llm-wiki/internal/hooks"
+	"github.com/m16khb/llm-wiki/internal/hostsetup"
 	"github.com/m16khb/llm-wiki/internal/importexport"
 	indexer "github.com/m16khb/llm-wiki/internal/index"
 	"github.com/m16khb/llm-wiki/internal/lint"
@@ -42,7 +43,7 @@ func rootCmd() *cobra.Command {
 		SilenceErrors: true,
 	}
 	cmd.SetVersionTemplate("llm-wiki {{.Version}}\n")
-	cmd.AddCommand(initCmd(), validateCmd(), lintCmd(), indexCmd(), logCmd(), graphCmd(), queryPackCmd(), importCmd(), exportCmd(), hookCmd(), daemonCmd(), mcpCmd())
+	cmd.AddCommand(initCmd(), validateCmd(), lintCmd(), indexCmd(), logCmd(), graphCmd(), queryPackCmd(), importCmd(), exportCmd(), hookCmd(), setupHostsCmd(), daemonCmd(), mcpCmd())
 	return cmd
 }
 
@@ -287,6 +288,45 @@ func hookCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&host, "host", "codex", "hook host: claude, codex, reasonix")
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "emit diagnostic JSON")
+	return cmd
+}
+
+func setupHostsCmd() *cobra.Command {
+	var apply bool
+	var jsonOut bool
+	var home string
+	var project string
+	var bin string
+	cmd := &cobra.Command{
+		Use:   "setup-hosts",
+		Short: "Configure Claude Code, Codex, and Reasonix to use llm-wiki mcp",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			result, err := hostsetup.Setup(hostsetup.Options{
+				HomeDir:    home,
+				ProjectDir: project,
+				BinaryPath: bin,
+				Apply:      apply,
+			})
+			if err != nil {
+				return err
+			}
+			if jsonOut {
+				return writeJSON(cmd, result)
+			}
+			for _, host := range result.Hosts {
+				fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\n", host.Name, host.Action, host.ConfigPath)
+			}
+			if !result.Applied {
+				fmt.Fprintln(cmd.OutOrStdout(), "dry-run: rerun with --apply to write changes")
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&apply, "apply", false, "write host configuration files")
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "emit JSON")
+	cmd.Flags().StringVar(&home, "home", "", "home directory for user-level host config")
+	cmd.Flags().StringVar(&project, "project", "", "project directory for project-level host config")
+	cmd.Flags().StringVar(&bin, "bin", "", "llm-wiki binary path to use in host configs")
 	return cmd
 }
 

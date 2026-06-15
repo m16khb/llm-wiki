@@ -6,8 +6,14 @@ Codex-specific plugin.
 
 ## MCP
 
-Copy `packages/hosts/codex/config.example.toml` into the relevant Codex
-configuration file and keep the server process as `llm-wiki mcp`.
+Prefer the shared setup command:
+
+```bash
+llm-wiki setup-hosts --apply --json
+```
+
+For manual setup, copy `packages/hosts/codex/config.example.toml` into the
+relevant Codex configuration file and keep the server process as `llm-wiki mcp`.
 
 User-level Codex configuration lives in `~/.codex/config.toml`. Project-scoped
 configuration can live in `.codex/config.toml` for trusted projects. If the
