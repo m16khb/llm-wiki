@@ -1,0 +1,8 @@
+.DS_Store
+bin/
+dist/
+coverage.out
+*.test
+.llm-wiki/
+.harness/
+.agent-harness/state/

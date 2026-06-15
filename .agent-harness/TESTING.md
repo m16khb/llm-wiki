@@ -1,0 +1,49 @@
+---
+name: TESTING.md
+description: Verification standards, test practices, and required checks.
+---
+
+# Testing
+
+## Required Local Checks
+
+Run these before claiming completion for code changes:
+
+```bash
+gofmt -w cmd internal
+go vet ./...
+go test ./...
+go run ./cmd/llm-wiki --version
+go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
+go run ./cmd/llm-wiki validate fixtures/okf-invalid-missing-type --json
+```
+
+The invalid fixture is expected to return exit code 1 while emitting the validation DTO with `ok: false`.
+
+## Behavior Coverage
+
+Current tests cover:
+
+- frontmatter parse/write and unknown-field preservation
+- missing `type` validation
+- `index.md`/`log.md` exclusion from concept count
+- nested concept path stability
+- broken link warning in lint without validation failure
+- safe write path rejection for traversal and symlink escape
+- locked append behavior for log writes
+- hook JSONL redaction, payload cap, and 50-writer concurrency
+- host hook output shapes for Codex, Claude Code, and Reasonix
+- deterministic graph edges from wiki links
+- query-pack bounded context and no synthesized answer
+- fixture-level NVK dry-run planning
+
+## Test Style
+
+- Add tests before production behavior for new features or bug fixes.
+- Prefer fixture-level tests for CLI-visible OKF behavior.
+- Normalize dynamic fields in future golden tests, especially timestamps, temp paths, and generated absolute roots.
+- Do not depend on network, real user home configuration, or host-specific installed agents.
+
+## CI
+
+`.github/workflows/ci.yml` uses `actions/checkout@v6` and `actions/setup-go@v6`, then runs formatting, vet, tests, and CLI smoke checks.

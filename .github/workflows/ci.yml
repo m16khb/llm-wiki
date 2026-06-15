@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - run: go test ./...
+      - run: go run ./cmd/llm-wiki --version
+      - run: go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
+      - run: |
+          if go run ./cmd/llm-wiki validate fixtures/okf-invalid-missing-type --json; then
+            echo "invalid fixture unexpectedly passed"
+            exit 1
+          fi

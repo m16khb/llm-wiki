@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "llm-wiki hook UserPromptSubmit --host claude --json",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "llm-wiki hook PostToolUse --host claude --json",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "llm-wiki hook Stop --host claude --json",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
