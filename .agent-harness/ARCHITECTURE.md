@@ -21,12 +21,12 @@ description: System structure, component boundaries, and responsibilities.
 - `internal/hooks`: host-shaped hook output plus redacted JSONL event logging with file locks.
 - `internal/mcp`: Go MCP SDK server that exposes the same service semantics as CLI through `llm_wiki_validate`, `llm_wiki_lint`, `llm_wiki_index`, `llm_wiki_graph`, and `llm_wiki_query_pack`.
 - `internal/importexport`: fixture-level NVK import/export planning and dry-run behavior.
-- `packages/hosts/{claude,codex,reasonix,portable}`: host integration notes/templates only; no duplicated OKF core logic.
+- `packages/hosts/{claude,codex,reasonix,portable}`: host integration notes/templates only, including MCP config examples; no duplicated OKF core logic.
 
 ## OKF Boundary
 
-OKF v0.1 compatibility is documented in `docs/okf-v0.1-compat.md`. The upstream Google OKF v0.1 spec is vendored for local reference under `third_party/google-okf/` with its Apache-2.0 license and source metadata. The executable hard contract remains the code and tests: non-reserved Markdown concepts require valid UTF-8, parseable YAML frontmatter, and `type`; `index.md` and `log.md` are reserved at every level; root `index.md` may declare only `okf_version`; `log.md` date headings must use `YYYY-MM-DD`; unknown fields are tolerated and preserved; broken links are lint warnings.
+OKF v0.1 compatibility is documented in `docs/okf-v0.1-compat.md`. Host MCP smoke steps are documented in `docs/host-mcp-smoke.md`. The upstream Google OKF v0.1 spec is vendored for local reference under `third_party/google-okf/` with its Apache-2.0 license and source metadata. The executable hard contract remains the code and tests: non-reserved Markdown concepts require valid UTF-8, parseable YAML frontmatter, and `type`; `index.md` and `log.md` are reserved at every level; root `index.md` may declare only `okf_version`; `log.md` date headings must use `YYYY-MM-DD`; unknown fields are tolerated and preserved; broken links are lint warnings.
 
 ## Host-Neutral Rule
 
-Claude Code, Codex, Reasonix, and portable agents should invoke the same CLI/MCP behavior. Host-specific packages may provide settings, hooks, or skill wrapper text, but must not implement separate validation, linting, graph, index, log, or query-pack logic.
+Claude Code, Codex, Reasonix, and portable agents should invoke the same CLI/MCP behavior. Host-specific packages may provide settings, hooks, MCP config templates, or skill wrapper text, but must not implement separate validation, linting, graph, index, log, or query-pack logic.

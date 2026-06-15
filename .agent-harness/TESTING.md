@@ -13,6 +13,7 @@ Run these before claiming completion for code changes:
 gofmt -w cmd internal
 go vet ./...
 go test ./...
+go test ./internal/snapshots
 go run ./cmd/llm-wiki --version
 go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
 go run ./cmd/llm-wiki validate fixtures/okf-invalid-missing-type --json
@@ -39,6 +40,7 @@ Current tests cover:
 - deterministic graph edges from wiki links
 - query-pack bounded context and no synthesized answer
 - MCP SDK in-memory server tool listing and `llm_wiki_validate`/`llm_wiki_query_pack` calls
+- normalized CLI JSON golden snapshots for validation and query-pack DTOs
 - fixture-level NVK dry-run planning
 
 ## Test Style
@@ -46,8 +48,9 @@ Current tests cover:
 - Add tests before production behavior for new features or bug fixes.
 - Prefer fixture-level tests for CLI-visible OKF behavior.
 - Use MCP SDK in-memory transports for MCP handler behavior; do not require installed host agents.
-- Normalize dynamic fields in future golden tests, especially timestamps, temp paths, and generated absolute roots.
+- Normalize dynamic fields in golden tests, especially timestamps, temp paths, and generated absolute roots. CLI snapshots live under `testdata/snapshots/`.
 - Do not depend on network, real user home configuration, or host-specific installed agents.
+- Host end-to-end checks are documented as optional smoke procedures. Normal tests must stay runnable without Claude Code, Codex, or Reasonix installed.
 
 ## CI
 

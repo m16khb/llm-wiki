@@ -1,0 +1,5 @@
+[mcp_servers.llm-wiki]
+command = "llm-wiki"
+args = ["mcp"]
+startup_timeout_sec = 10
+tool_timeout_sec = 60

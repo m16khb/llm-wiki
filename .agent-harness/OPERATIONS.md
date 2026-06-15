@@ -28,9 +28,16 @@ Use `go run ./cmd/llm-wiki ...` during development and the installed `llm-wiki` 
 
 Run `llm-wiki mcp` as a stdio MCP server. Initial tools are `llm_wiki_validate`, `llm_wiki_lint`, `llm_wiki_index`, `llm_wiki_graph`, and `llm_wiki_query_pack`. These tools call the same internal service packages used by the CLI.
 
+Baseline MCP smoke:
+
+```bash
+go test ./internal/mcp
+go run ./cmd/llm-wiki mcp < /dev/null
+```
+
 ## Host Integrations
 
-Claude Code, Codex, Reasonix, and portable agents should use the same CLI/MCP surface. See `packages/hosts/*` for example hook/settings files. Host adapters are allowed to format host settings but must not duplicate OKF core logic.
+Claude Code, Codex, Reasonix, and portable agents should use the same CLI/MCP surface. See `packages/hosts/*` for example hook/settings and MCP config files, and `docs/host-mcp-smoke.md` for host-specific smoke steps. Host adapters are allowed to format host settings but must not duplicate OKF core logic. Host smoke work should start with the non-mutating probes in `docs/host-mcp-smoke.md` before changing user-level host configuration.
 
 ## Runtime State
 

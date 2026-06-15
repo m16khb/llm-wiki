@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "llm-wiki": {
+      "command": "llm-wiki",
+      "args": ["mcp"],
+      "env": {}
+    }
+  }
+}

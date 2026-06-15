@@ -66,6 +66,8 @@ source metadata.
 
 Host packages in `packages/hosts/` are intentionally thin. They document how a
 host should invoke the same `llm-wiki` binary without duplicating core logic.
+See [docs/host-mcp-smoke.md](docs/host-mcp-smoke.md) for Claude Code, Codex,
+Reasonix, and portable MCP smoke-test steps.
 
 ## MCP Tools
 
@@ -84,6 +86,7 @@ CLI. Initial tools:
 gofmt -w cmd internal
 go vet ./...
 go test ./...
+go test ./internal/snapshots
 go run ./cmd/llm-wiki --version
 go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
 go run ./cmd/llm-wiki validate fixtures/okf-invalid-missing-type --json

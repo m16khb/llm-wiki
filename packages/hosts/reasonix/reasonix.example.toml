@@ -1,0 +1,5 @@
+[[plugins]]
+name = "llm-wiki"
+type = "stdio"
+command = "llm-wiki"
+args = ["mcp"]

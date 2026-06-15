@@ -1,0 +1,12 @@
+{
+  "bundle_root": "$REPO/fixtures/okf-minimal",
+  "concept_count": 1,
+  "errors": [],
+  "ok": true,
+  "okf_version": "0.1",
+  "reserved_files": [
+    "index.md",
+    "log.md"
+  ],
+  "warnings": []
+}

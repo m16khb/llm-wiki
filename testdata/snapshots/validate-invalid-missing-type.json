@@ -1,0 +1,14 @@
+{
+  "bundle_root": "$REPO/fixtures/okf-invalid-missing-type",
+  "concept_count": 1,
+  "errors": [
+    "bad.md: missing required frontmatter field type"
+  ],
+  "ok": false,
+  "okf_version": "0.1",
+  "reserved_files": [
+    "index.md",
+    "log.md"
+  ],
+  "warnings": []
+}

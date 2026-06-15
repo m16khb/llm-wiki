@@ -1,0 +1,13 @@
+{
+  "bundle_root": "$REPO/fixtures/okf-minimal",
+  "context_only": true,
+  "contexts": [
+    {
+      "path": "alpha.md",
+      "snippet": "# Alpha\n\nLinks to [[nested/beta]].",
+      "title": "Alpha"
+    }
+  ],
+  "ok": true,
+  "question": "alpha"
+}

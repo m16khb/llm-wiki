@@ -107,3 +107,24 @@ Record structural choices, rejected alternatives, and decisions that affect long
   - Keep `llm-wiki mcp` as a ready JSON placeholder
   - Implement ad hoc JSON-RPC manually without the SDK
   - Move broken links into validation errors
+
+## 2026-06-15 — Host MCP templates and normalized CLI snapshots
+
+- Kind: `adr`
+- Source: codex implementation
+- Summary: The repository now includes host-specific MCP configuration examples, non-mutating host smoke procedures, and normalized CLI JSON snapshots for contract drift detection.
+- Context: The user selected follow-up options 1 and 2: add Claude Code, Codex, and Reasonix MCP setup/smoke documentation, and add CLI/MCP contract golden tests.
+- Decision: Keep host setup as templates and smoke docs under `packages/hosts/*` and `docs/host-mcp-smoke.md`; document host probes that avoid persistent user config changes where possible; keep executable JSON contract coverage in `internal/snapshots` with dynamic paths normalized to `$REPO`.
+- Consequences: Future DTO changes should update snapshots intentionally, and future host integrations should add templates around `llm-wiki mcp` instead of embedding OKF logic.
+- Evidence:
+  - docs/host-mcp-smoke.md
+  - packages/hosts/claude/mcp.example.json
+  - packages/hosts/codex/config.example.toml
+  - packages/hosts/reasonix/reasonix.example.toml
+  - packages/hosts/portable/mcp.example.json
+  - internal/snapshots/snapshots_test.go
+  - testdata/snapshots/*.json
+- Alternatives / rejected options:
+  - Add host-specific plugins with duplicated OKF behavior
+  - Rely only on prose examples without machine-checked CLI snapshots
+  - Require installed host agents in normal test runs
