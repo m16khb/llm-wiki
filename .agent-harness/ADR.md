@@ -149,3 +149,28 @@ Record structural choices, rejected alternatives, and decisions that affect long
   - Implement a daemon process now
   - Keep daemon support as prose-only design
   - Make host templates opt into `llm-wiki mcp --daemon` before the runtime exists
+
+## 2026-06-16 — Make MCP daemon-backed by default
+
+- Kind: `adr`
+- Source: codex implementation
+- Supersedes: `2026-06-15 — Reserve daemon CLI contract without runtime`
+- Summary: `llm-wiki mcp` now auto-starts or connects to a shared user-level daemon and acts as a stdio proxy to that daemon.
+- Context: Claude Code, Codex, Reasonix, and portable agents should all use the same long-lived backend layer instead of each host starting independent direct MCP service instances. This matches the agent-harness runtime pattern while keeping OKF logic in the existing service packages.
+- Decision: Implement `internal/daemon` as a real runtime with state-dir resolution, PID/socket/lock/log files, start/status/doctor/stop lifecycle, Unix-socket MCP serving, and MCP stdio proxying. Keep host templates on plain `llm-wiki mcp`; `mcp --daemon` remains accepted only as a compatibility no-op because daemon-backed MCP is now the default.
+- Consequences: MCP sessions from multiple agents share the daemon backend. Tests that start a daemon must set `LLM_WIKI_STATE_DIR` to isolated temporary state and stop the daemon in cleanup. Operators may need to stop an old daemon after manually replacing the installed binary if behavior appears stale.
+- Evidence:
+  - internal/daemon/daemon.go
+  - internal/daemon/daemon_test.go
+  - internal/mcp/transport.go
+  - internal/mcp/mcp.go
+  - cmd/llm-wiki/main.go
+  - internal/snapshots/daemon_runtime_test.go
+  - internal/snapshots/snapshots_test.go
+  - testdata/snapshots/daemon-*.json
+  - docs/daemon-design.md
+  - docs/host-mcp-smoke.md
+- Alternatives / rejected options:
+  - Keep direct stdio MCP as the default and require hosts to opt into daemon mode
+  - Implement host-specific daemon plugins
+  - Add a daemon process without making `llm-wiki mcp` auto-start and proxy to it

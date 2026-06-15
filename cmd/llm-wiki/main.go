@@ -2,10 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/m16khb/llm-wiki/internal/daemon"
 	"github.com/m16khb/llm-wiki/internal/graph"
@@ -15,7 +16,6 @@ import (
 	indexer "github.com/m16khb/llm-wiki/internal/index"
 	"github.com/m16khb/llm-wiki/internal/lint"
 	"github.com/m16khb/llm-wiki/internal/logstore"
-	"github.com/m16khb/llm-wiki/internal/mcp"
 	"github.com/m16khb/llm-wiki/internal/okf"
 	"github.com/m16khb/llm-wiki/internal/querypack"
 	"github.com/m16khb/llm-wiki/internal/validate"
@@ -331,22 +331,33 @@ func setupHostsCmd() *cobra.Command {
 }
 
 func daemonCmd() *cobra.Command {
+	var internal bool
 	cmd := &cobra.Command{
 		Use:   "daemon",
-		Short: "Inspect reserved llm-wiki daemon runtime state",
+		Short: "Manage the llm-wiki daemon runtime",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !internal {
+				return cmd.Help()
+			}
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+			return daemon.RunServer(ctx)
+		},
 	}
-	cmd.AddCommand(daemonActionCmd("status", daemon.Status, 0), daemonActionCmd("doctor", daemon.Doctor, 0), daemonActionCmd("start", daemon.Start, 2), daemonActionCmd("stop", daemon.Stop, 2))
+	cmd.Flags().BoolVar(&internal, "internal", false, "run the daemon server process")
+	_ = cmd.Flags().MarkHidden("internal")
+	cmd.AddCommand(daemonActionCmd("status", daemon.Status), daemonActionCmd("doctor", daemon.Doctor), daemonActionCmd("start", daemon.Start), daemonActionCmd("stop", daemon.Stop))
 	return cmd
 }
 
-func daemonActionCmd(action string, run func() (daemon.Result, error), unsupportedCode int) *cobra.Command {
+func daemonActionCmd(action string, run func() (daemon.Result, error)) *cobra.Command {
 	var jsonOut bool
 	cmd := &cobra.Command{
 		Use:  action,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			result, err := run()
-			if err != nil && !errors.Is(err, daemon.ErrUnsupported) {
+			if err != nil {
 				return err
 			}
 			if jsonOut {
@@ -355,9 +366,6 @@ func daemonActionCmd(action string, run func() (daemon.Result, error), unsupport
 				}
 			} else {
 				fmt.Fprintf(cmd.OutOrStdout(), "ok=%v implemented=%v running=%v state_dir=%s\n", result.OK, result.Implemented, result.Running, result.StateDir)
-			}
-			if errors.Is(err, daemon.ErrUnsupported) {
-				return silentExit{code: unsupportedCode}
 			}
 			return nil
 		},
@@ -370,12 +378,10 @@ func mcpCmd() *cobra.Command {
 	var useDaemon bool
 	cmd := &cobra.Command{
 		Use:   "mcp",
-		Short: "Run the llm-wiki MCP stdio adapter",
+		Short: "Run the llm-wiki MCP stdio proxy",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if useDaemon {
-				return fmt.Errorf("daemon-backed MCP is not implemented; use llm-wiki mcp for direct stdio MCP")
-			}
-			return mcp.RunStdio(cmd.Context())
+			_ = useDaemon
+			return daemon.RunMCPProxy()
 		},
 	}
 	cmd.Flags().BoolVar(&useDaemon, "daemon", false, "use daemon-backed MCP transport")

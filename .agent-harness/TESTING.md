@@ -19,7 +19,7 @@ go run ./cmd/llm-wiki setup-hosts --json
 go run ./cmd/llm-wiki daemon status --json
 go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
 go run ./cmd/llm-wiki validate fixtures/okf-invalid-missing-type --json
-go run ./cmd/llm-wiki mcp < /dev/null
+tmp_state="$(mktemp -d)" && LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki mcp < /dev/null; LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki daemon stop --json; rm -rf "$tmp_state"
 ```
 
 The invalid fixture is expected to return exit code 1 while emitting the validation DTO with `ok: false`.
@@ -44,7 +44,7 @@ Current tests cover:
 - query-pack bounded context and no synthesized answer
 - MCP SDK in-memory server tool listing and `llm_wiki_validate`/`llm_wiki_query_pack` calls
 - normalized CLI JSON golden snapshots for validation and query-pack DTOs
-- daemon state-path resolution, unsupported start/stop behavior, and daemon CLI JSON snapshots
+- daemon state-path resolution, start/status/stop behavior, daemon-backed MCP proxying, and daemon CLI JSON snapshots
 - fixture-level NVK dry-run planning
 
 ## Test Style
@@ -53,7 +53,7 @@ Current tests cover:
 - Prefer fixture-level tests for CLI-visible OKF behavior.
 - Use MCP SDK in-memory transports for MCP handler behavior; do not require installed host agents.
 - Normalize dynamic fields in golden tests, especially timestamps, temp paths, and generated absolute roots. CLI snapshots live under `testdata/snapshots/`.
-- Do not depend on network, real user home configuration, or host-specific installed agents.
+- Do not depend on network, real user home configuration, or host-specific installed agents. Tests that start a daemon must set `LLM_WIKI_STATE_DIR` to an isolated temp directory and stop it during cleanup.
 - Host end-to-end checks are documented as optional smoke procedures. Normal tests must stay runnable without Claude Code, Codex, or Reasonix installed.
 
 ## CI

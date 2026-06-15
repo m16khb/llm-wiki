@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"io"
 
 	"github.com/m16khb/llm-wiki/internal/graph"
 	"github.com/m16khb/llm-wiki/internal/index"
@@ -75,6 +76,10 @@ func NewServer() *mcpsdk.Server {
 
 func RunStdio(ctx context.Context) error {
 	return NewServer().Run(ctx, &mcpsdk.StdioTransport{})
+}
+
+func RunStream(ctx context.Context, rwc io.ReadWriteCloser) error {
+	return NewServer().Run(ctx, NewStreamTransport(rwc))
 }
 
 func validateTool(_ context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (*mcpsdk.CallToolResult, validate.Result, error) {

@@ -18,6 +18,11 @@ func TestCLIGoldenSnapshots(t *testing.T) {
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build CLI: %v\n%s", err, out)
 	}
+	daemonState := filepath.Join(repo, "testdata", "runtime-state")
+	_ = os.RemoveAll(daemonState)
+	t.Cleanup(func() {
+		_ = os.RemoveAll(daemonState)
+	})
 	cases := []struct {
 		name string
 		args []string
@@ -42,26 +47,26 @@ func TestCLIGoldenSnapshots(t *testing.T) {
 		{
 			name: "daemon-status",
 			args: []string{"daemon", "status", "--json"},
-			env:  []string{"LLM_WIKI_STATE_DIR=" + filepath.Join(repo, "testdata", "runtime-state")},
+			env:  []string{"LLM_WIKI_STATE_DIR=" + daemonState},
 			code: 0,
 		},
 		{
 			name: "daemon-doctor",
 			args: []string{"daemon", "doctor", "--json"},
-			env:  []string{"LLM_WIKI_STATE_DIR=" + filepath.Join(repo, "testdata", "runtime-state")},
+			env:  []string{"LLM_WIKI_STATE_DIR=" + daemonState},
 			code: 0,
 		},
 		{
 			name: "daemon-start",
 			args: []string{"daemon", "start", "--json"},
-			env:  []string{"LLM_WIKI_STATE_DIR=" + filepath.Join(repo, "testdata", "runtime-state")},
-			code: 2,
+			env:  []string{"LLM_WIKI_STATE_DIR=" + daemonState},
+			code: 0,
 		},
 		{
 			name: "daemon-stop",
 			args: []string{"daemon", "stop", "--json"},
-			env:  []string{"LLM_WIKI_STATE_DIR=" + filepath.Join(repo, "testdata", "runtime-state")},
-			code: 2,
+			env:  []string{"LLM_WIKI_STATE_DIR=" + daemonState},
+			code: 0,
 		},
 	}
 
@@ -137,6 +142,10 @@ func normalizeValue(value any, repo string) {
 	switch v := value.(type) {
 	case map[string]any:
 		for key, child := range v {
+			if key == "pid" {
+				v[key] = "$PID"
+				continue
+			}
 			if s, ok := child.(string); ok {
 				v[key] = normalizeString(s, repo)
 				continue

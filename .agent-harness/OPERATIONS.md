@@ -39,18 +39,17 @@ plugins or caches; legacy cleanup is a separate explicit maintenance step.
 
 ## MCP
 
-Run `llm-wiki mcp` as a stdio MCP server. Initial tools are `llm_wiki_validate`, `llm_wiki_lint`, `llm_wiki_index`, `llm_wiki_graph`, and `llm_wiki_query_pack`. These tools call the same internal service packages used by the CLI.
+Run `llm-wiki mcp` as the stdio MCP proxy. It auto-starts or connects to the shared user-level daemon, then proxies MCP JSON-RPC bytes to the daemon socket. Initial tools are `llm_wiki_validate`, `llm_wiki_lint`, `llm_wiki_index`, `llm_wiki_graph`, and `llm_wiki_query_pack`. These tools call the same internal service packages used by the CLI.
 
 Baseline MCP smoke:
 
 ```bash
 go test ./internal/mcp
-go run ./cmd/llm-wiki mcp < /dev/null
-go run ./cmd/llm-wiki daemon status --json
+tmp_state="$(mktemp -d)" && LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki mcp < /dev/null; LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki daemon stop --json; rm -rf "$tmp_state"
+tmp_state="$(mktemp -d)" && LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki daemon start --json && LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki daemon status --json && LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki daemon stop --json; rm -rf "$tmp_state"
 ```
 
-`llm-wiki mcp --daemon` is reserved for future daemon-backed MCP and currently
-returns an unsupported error. Keep host configuration on plain `llm-wiki mcp`.
+Keep host configuration on plain `llm-wiki mcp`; that command is already daemon-backed.
 
 ## Host Integrations
 
@@ -60,16 +59,16 @@ Claude Code, Codex, Reasonix, and portable agents should use the same CLI/MCP su
 
 Hook event logging writes redacted JSONL under `.llm-wiki/hooks.jsonl` inside the current workspace. `.llm-wiki/` is ignored by git. Logs use file locks and payload caps; hooks should stay fast and should not perform model calls.
 
-The daemon skeleton resolves future runtime state in this order:
+The daemon resolves runtime state in this order:
 
 1. `LLM_WIKI_STATE_DIR`
 2. `$XDG_STATE_HOME/llm-wiki`
 3. `~/.local/state/llm-wiki`
 
-Reserved daemon files are `daemon.sock`, `daemon.pid`, and `daemon.lock`.
-`daemon status` and `daemon doctor` are safe probes. `daemon start` and
-`daemon stop` are unsupported and must not create runtime files until the daemon
-runtime is intentionally implemented.
+Daemon files are `daemon.sock`, `daemon.pid`, `daemon.lock`, and `daemon.log`.
+`daemon status` and `daemon doctor` are safe probes. `daemon start` creates the
+state directory and starts the socket server when needed; `daemon stop`
+terminates it and is safe to run when already stopped.
 
 ## Project Docs
 

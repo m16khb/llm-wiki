@@ -1,7 +1,6 @@
 package daemon
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -46,7 +45,7 @@ func TestPathsUseXDGStateHome(t *testing.T) {
 	}
 }
 
-func TestStatusReportsUnimplementedAndNotRunning(t *testing.T) {
+func TestStatusReportsImplementedAndNotRunning(t *testing.T) {
 	t.Setenv("LLM_WIKI_STATE_DIR", filepath.Join("tmp", "state"))
 
 	result, err := Status()
@@ -60,8 +59,8 @@ func TestStatusReportsUnimplementedAndNotRunning(t *testing.T) {
 	if result.Action != "status" {
 		t.Fatalf("Action = %q, want status", result.Action)
 	}
-	if result.Implemented {
-		t.Fatal("Implemented = true, want false")
+	if !result.Implemented {
+		t.Fatal("Implemented = false, want true")
 	}
 	if result.Running {
 		t.Fatal("Running = true, want false")
@@ -77,44 +76,30 @@ func TestStatusReportsUnimplementedAndNotRunning(t *testing.T) {
 	}
 }
 
-func TestStartAndStopReturnUnsupportedResults(t *testing.T) {
+func TestStopIsIdempotentWhenDaemonIsNotRunning(t *testing.T) {
 	stateDir := filepath.Join(t.TempDir(), "state")
 	t.Setenv("LLM_WIKI_STATE_DIR", stateDir)
 
-	for _, tc := range []struct {
-		name   string
-		action string
-		run    func() (Result, error)
-	}{
-		{name: "start", action: "start", run: Start},
-		{name: "stop", action: "stop", run: Stop},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			result, err := tc.run()
-			if !errors.Is(err, ErrUnsupported) {
-				t.Fatalf("error = %v, want ErrUnsupported", err)
-			}
-			if result.OK {
-				t.Fatal("OK = true, want false")
-			}
-			if result.Action != tc.action {
-				t.Fatalf("Action = %q, want %q", result.Action, tc.action)
-			}
-			if result.Implemented {
-				t.Fatal("Implemented = true, want false")
-			}
-			if result.Running {
-				t.Fatal("Running = true, want false")
-			}
-			if len(result.Warnings) == 0 {
-				t.Fatal("Warnings is empty, want unsupported warning")
-			}
-			for _, path := range []string{result.StateDir, result.SocketPath, result.PIDPath, result.LockPath} {
-				if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
-					t.Fatalf("%s exists or stat failed with unexpected error: %v", path, err)
-				}
-			}
-		})
+	result, err := Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK {
+		t.Fatal("OK = false, want true")
+	}
+	if result.Action != "stop" {
+		t.Fatalf("Action = %q, want stop", result.Action)
+	}
+	if !result.Implemented {
+		t.Fatal("Implemented = false, want true")
+	}
+	if result.Running {
+		t.Fatal("Running = true, want false")
+	}
+	for _, path := range []string{result.SocketPath, result.PIDPath, result.LockPath} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("%s exists or stat failed with unexpected error: %v", path, err)
+		}
 	}
 }
 

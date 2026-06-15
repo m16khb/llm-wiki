@@ -85,24 +85,24 @@ plugins or caches; delete legacy host integrations separately when needed.
 
 ## Runtime Strategy
 
-The supported runtime path is direct stdio MCP:
+The supported runtime path is daemon-backed stdio MCP:
 
 ```bash
 llm-wiki mcp
 ```
 
-`llm-wiki daemon status --json` exposes reserved future state and IPC paths, but
-the daemon runtime is not implemented yet. `daemon start` and `daemon stop`
-return structured unsupported results and do not create processes, sockets, PID
-files, lock files, or state directories. `llm-wiki mcp --daemon` is reserved for
-future daemon-backed MCP and currently returns an unsupported error.
+`llm-wiki mcp` auto-starts or connects to the shared user-level daemon, then
+proxies MCP JSON-RPC bytes to the daemon socket. `llm-wiki daemon start`,
+`status`, `doctor`, and `stop` manage that backend process. `llm-wiki
+mcp --daemon` is accepted as a compatibility no-op because daemon-backed MCP is
+now the default.
 
 See [docs/daemon-design.md](docs/daemon-design.md) for the daemon contract.
 
 ## MCP Tools
 
-`llm-wiki mcp` runs an MCP stdio server backed by the same service layer as the
-CLI. Initial tools:
+`llm-wiki mcp` exposes an MCP stdio proxy backed by the same service layer as
+the CLI. Initial tools:
 
 - `llm_wiki_validate`
 - `llm_wiki_lint`

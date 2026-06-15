@@ -1,6 +1,6 @@
 # Host MCP Smoke Tests
 
-`llm-wiki` currently exposes one direct stdio MCP server for Claude Code, Codex,
+`llm-wiki` exposes one daemon-backed stdio MCP proxy for Claude Code, Codex,
 Reasonix, and portable MCP clients:
 
 ```bash
@@ -11,9 +11,9 @@ The host packages under `packages/hosts/` are templates only. They must keep
 calling the shared binary instead of reimplementing OKF validation, linting,
 indexing, graphing, or query-pack logic.
 
-Daemon-backed MCP is reserved for a future opt-in through
-`llm-wiki mcp --daemon`. It is not implemented yet, and host templates must
-continue to use plain `llm-wiki mcp`.
+Host templates should continue to use plain `llm-wiki mcp`; that command
+auto-starts or connects to the shared daemon. `llm-wiki mcp --daemon` is only a
+compatibility no-op.
 
 ## Baseline
 
@@ -21,16 +21,15 @@ Run these checks before debugging a host-specific configuration:
 
 ```bash
 go test ./internal/mcp
-go run ./cmd/llm-wiki mcp < /dev/null
-go run ./cmd/llm-wiki daemon status --json
+tmp_state="$(mktemp -d)" && LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki mcp < /dev/null; LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki daemon stop --json; rm -rf "$tmp_state"
+tmp_state="$(mktemp -d)" && LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki daemon start --json && LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki daemon status --json && LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki daemon stop --json; rm -rf "$tmp_state"
 go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
 go run ./cmd/llm-wiki query-pack fixtures/okf-minimal alpha --json
 ```
 
-`go run ./cmd/llm-wiki mcp < /dev/null` should exit `0`. It only proves that the
-stdio server starts and handles EOF; `go test ./internal/mcp` verifies tool
-listing and representative calls through the Go MCP SDK in-memory transport.
-Future daemon support must not break this direct MCP smoke path.
+The `mcp < /dev/null` smoke should exit `0` and auto-start the daemon in the
+isolated state directory. `go test ./internal/mcp` verifies tool listing and
+representative calls through the Go MCP SDK in-memory transport.
 
 ## Host CLI Probe
 
