@@ -174,3 +174,23 @@ Record structural choices, rejected alternatives, and decisions that affect long
   - Keep direct stdio MCP as the default and require hosts to opt into daemon mode
   - Implement host-specific daemon plugins
   - Add a daemon process without making `llm-wiki mcp` auto-start and proxy to it
+
+## 2026-06-16 — Drain daemon replacement and per-connection MCP vault defaults
+
+- Kind: `adr`
+- Source: codex implementation
+- Supersedes detail in: `2026-06-16 — Make MCP daemon-backed by default`
+- Summary: `LLM_WIKI_VAULT` is now MCP connection context instead of daemon process identity, and daemon replacement can drain active MCP sessions.
+- Context: Host agents may have different configured vaults while sharing one state-dir daemon. Restarting the daemon on every vault mismatch closes unrelated MCP transports. Binary upgrades also need a supported handover path that does not interrupt already accepted streams.
+- Decision: `llm-wiki mcp` sends a private `llm-wiki-daemon/1` first-line frame with `kind:"mcp"` and the proxy vault before forwarding MCP JSON-RPC. The daemon stores that vault in MCP context for path-optional tools. `daemon.meta.json` records protocol version plus executable identity. `llm-wiki daemon replace --json` sends a `kind:"drain"` frame, waits for the old listener to release `daemon.sock`, then starts a new daemon while old accepted streams continue until clients close. Missing or old metadata may fall back to a one-time hard restart.
+- Consequences: Vault changes no longer restart the daemon. Operators should use `daemon replace --json` after installing a new binary. Runtime cleanup must remove socket/PID/meta files only when they still belong to the exiting daemon, and stale-sibling cleanup must skip draining daemons.
+- Evidence:
+  - internal/vault/vault.go
+  - internal/mcp/mcp.go
+  - internal/daemon/daemon.go
+  - internal/snapshots/daemon_runtime_test.go
+  - docs/daemon-design.md
+- Alternatives / rejected options:
+  - Keep one daemon per vault environment
+  - Continue hard restarting on vault changes
+  - Require host agents to reconnect immediately during binary replacement

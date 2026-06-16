@@ -1,12 +1,12 @@
 package daemon
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
-
-	"github.com/m16khb/llm-wiki/internal/vault"
 )
 
 func TestPathsPreferLLMWikiStateDir(t *testing.T) {
@@ -180,54 +180,78 @@ func TestCleanupSiblingDaemonsKeepsCurrentPIDAndStopsStaleSiblings(t *testing.T)
 	}
 }
 
-func TestDaemonVaultMatchesCurrentEnv(t *testing.T) {
-	originalVaultForPID := daemonVaultForPID
+func TestCleanupSiblingDaemonsSkipsDrainingSibling(t *testing.T) {
+	originalExecutable := currentExecutable
+	originalFind := findSiblingDaemonPIDs
+	originalStateDir := daemonStateDirForPID
+	originalSignal := signalPID
 	t.Cleanup(func() {
-		daemonVaultForPID = originalVaultForPID
+		currentExecutable = originalExecutable
+		findSiblingDaemonPIDs = originalFind
+		daemonStateDirForPID = originalStateDir
+		signalPID = originalSignal
 	})
 
-	t.Setenv(vault.EnvVar, "/tmp/current-vault")
-	daemonVaultForPID = func(pid int) (string, bool) {
-		if pid != 123 {
-			t.Fatalf("pid = %d, want 123", pid)
-		}
-		return "/tmp/current-vault", true
+	stateDir := t.TempDir()
+	currentExecutable = func() (string, error) { return "/tmp/llm-wiki", nil }
+	findSiblingDaemonPIDs = func(string) ([]int, error) { return []int{111}, nil }
+	daemonStateDirForPID = func(int) (string, bool) { return stateDir, true }
+	if err := os.WriteFile(drainingMarkerPath(stateDir, 111), []byte("111\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	signalPID = func(pid int, signal syscall.Signal) error {
+		t.Fatalf("signalPID(%d, %v) called for draining sibling", pid, signal)
+		return nil
 	}
 
-	if !daemonVaultMatchesCurrentEnv(123) {
-		t.Fatal("daemonVaultMatchesCurrentEnv = false, want true for matching vault")
+	if warnings := cleanupSiblingDaemons(stateDir, 0); len(warnings) != 0 {
+		t.Fatalf("warnings = %#v, want none for draining sibling", warnings)
 	}
 }
 
-func TestDaemonVaultMatchesCurrentEnvDetectsMissingDaemonVault(t *testing.T) {
-	originalVaultForPID := daemonVaultForPID
-	t.Cleanup(func() {
-		daemonVaultForPID = originalVaultForPID
-	})
+func TestReadDaemonFrameParsesMCPFrame(t *testing.T) {
+	reader := bufio.NewReader(strings.NewReader(`{"protocol":"llm-wiki-daemon/1","kind":"mcp","vault_path":"/tmp/vault"}` + "\n"))
 
-	t.Setenv(vault.EnvVar, "/tmp/current-vault")
-	daemonVaultForPID = func(pid int) (string, bool) {
-		return "", false
+	frame, replay, err := readDaemonFrame(reader)
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	if daemonVaultMatchesCurrentEnv(123) {
-		t.Fatal("daemonVaultMatchesCurrentEnv = true, want false when current proxy has a vault but daemon does not")
+	if replay != nil {
+		t.Fatalf("replay = %q, want nil", string(replay))
+	}
+	if frame.Kind != "mcp" || frame.VaultPath != "/tmp/vault" {
+		t.Fatalf("frame = %#v, want mcp vault frame", frame)
 	}
 }
 
-func TestDaemonVaultMatchesCurrentEnvDetectsStaleDaemonVault(t *testing.T) {
-	originalVaultForPID := daemonVaultForPID
-	t.Cleanup(func() {
-		daemonVaultForPID = originalVaultForPID
-	})
+func TestReadDaemonFrameParsesDrainFrame(t *testing.T) {
+	reader := bufio.NewReader(strings.NewReader(`{"protocol":"llm-wiki-daemon/1","kind":"drain"}` + "\n"))
 
-	t.Setenv(vault.EnvVar, "/tmp/current-vault")
-	daemonVaultForPID = func(pid int) (string, bool) {
-		return "/tmp/old-vault", true
+	frame, replay, err := readDaemonFrame(reader)
+	if err != nil {
+		t.Fatal(err)
 	}
+	if replay != nil {
+		t.Fatalf("replay = %q, want nil", string(replay))
+	}
+	if frame.Kind != "drain" {
+		t.Fatalf("frame = %#v, want drain frame", frame)
+	}
+}
 
-	if daemonVaultMatchesCurrentEnv(123) {
-		t.Fatal("daemonVaultMatchesCurrentEnv = true, want false for stale daemon vault")
+func TestReadDaemonFrameReplaysNonFrameFirstLine(t *testing.T) {
+	firstLine := `{"jsonrpc":"2.0","id":1,"method":"initialize"}` + "\n"
+	reader := bufio.NewReader(strings.NewReader(firstLine))
+
+	frame, replay, err := readDaemonFrame(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if frame.Kind != "" {
+		t.Fatalf("frame = %#v, want empty frame", frame)
+	}
+	if string(replay) != firstLine {
+		t.Fatalf("replay = %q, want first line %q", string(replay), firstLine)
 	}
 }
 

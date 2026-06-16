@@ -9,8 +9,15 @@ import (
 const EnvVar = "LLM_WIKI_VAULT"
 
 func Resolve(path string) (string, error) {
+	return ResolveWithDefault(path, "")
+}
+
+func ResolveWithDefault(path string, defaultPath string) (string, error) {
 	if strings.TrimSpace(path) != "" {
 		return path, nil
+	}
+	if strings.TrimSpace(defaultPath) != "" {
+		return defaultPath, nil
 	}
 	configured := strings.TrimSpace(os.Getenv(EnvVar))
 	if configured != "" {

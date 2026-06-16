@@ -76,6 +76,28 @@ func TestServerValidateToolDefaultsToConfiguredVault(t *testing.T) {
 	}
 }
 
+func TestServerValidateToolDefaultsToContextVaultBeforeEnv(t *testing.T) {
+	t.Setenv("LLM_WIKI_VAULT", "../../fixtures/querypack-graph")
+	ctx, cancel := context.WithTimeout(WithDefaultVault(context.Background(), "../../fixtures/okf-minimal"), 5*time.Second)
+	defer cancel()
+	clientSession, serverSession := connectTestServer(t, ctx)
+	defer serverSession.Wait()
+	defer clientSession.Close()
+
+	result, err := clientSession.CallTool(ctx, &mcpsdk.CallToolParams{
+		Name:      "llm_wiki_validate",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dto validate.Result
+	decodeStructured(t, result.StructuredContent, &dto)
+	if !dto.OK || dto.ConceptCount != 1 {
+		t.Fatalf("dto = %#v, want context vault to beat env vault", dto)
+	}
+}
+
 func TestServerQueryPackToolReturnsContextOnly(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

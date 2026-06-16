@@ -54,7 +54,7 @@ Explicit path arguments still win over `LLM_WIKI_VAULT`.
 
 ## MCP
 
-Run `llm-wiki mcp` as the stdio MCP proxy. It auto-starts or connects to the shared user-level daemon, then proxies MCP JSON-RPC bytes to the daemon socket. Multiple host agents can each run a proxy, but they should converge on one daemon for the same daemon state directory. Initial tools are `llm_wiki_validate`, `llm_wiki_lint`, `llm_wiki_index`, `llm_wiki_graph`, and `llm_wiki_query_pack`. These tools call the same internal service packages used by the CLI.
+Run `llm-wiki mcp` as the stdio MCP proxy. It auto-starts or connects to the shared user-level daemon, sends the proxy's `LLM_WIKI_VAULT` as per-connection context, then proxies MCP JSON-RPC bytes to the daemon socket. Multiple host agents can each run a proxy and share one daemon for the same daemon state directory even when their vault defaults differ. Initial tools are `llm_wiki_validate`, `llm_wiki_lint`, `llm_wiki_index`, `llm_wiki_graph`, and `llm_wiki_query_pack`. These tools call the same internal service packages used by the CLI.
 
 Baseline MCP smoke:
 
@@ -80,14 +80,15 @@ The daemon resolves runtime state in this order:
 2. `$XDG_STATE_HOME/llm-wiki`
 3. `~/.local/state/llm-wiki`
 
-Daemon files are `daemon.sock`, `daemon.pid`, `daemon.lock`, and `daemon.log`.
-`daemon status` and `daemon doctor` are safe probes. `daemon start` creates the
-state directory and starts the socket server when needed; it also restarts a
-running state-dir daemon whose `LLM_WIKI_VAULT` differs from the caller's
-environment, and best-effort stops stale sibling daemon processes that use the
-same resolved state directory while leaving other state directories alone.
-`daemon stop` terminates the state-dir daemon and is safe to run when already
-stopped.
+Daemon files are `daemon.sock`, `daemon.pid`, `daemon.lock`, `daemon.log`, and
+`daemon.meta.json`. `daemon status` and `daemon doctor` are safe probes.
+`daemon start` creates the state directory and starts the socket server when
+needed. It no longer restarts only because `LLM_WIKI_VAULT` differs; vault
+defaults are per MCP connection. If executable metadata differs, startup uses a
+graceful drain replacement when the running daemon supports it. `daemon replace`
+forces that graceful handover and is the preferred command after installing a
+new binary. `daemon stop` terminates the current state-dir daemon and is safe to
+run when already stopped.
 
 ## Project Docs
 

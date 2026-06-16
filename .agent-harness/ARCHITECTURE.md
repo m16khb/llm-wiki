@@ -19,8 +19,8 @@ description: System structure, component boundaries, and responsibilities.
 - `internal/index`, `internal/logstore`: deterministic index writing and locked append-only log writes.
 - `internal/graph`, `internal/querypack`: deterministic graph and bounded context output; query-pack never answers.
 - `internal/hooks`: host-shaped hook output plus redacted JSONL event logging with file locks.
-- `internal/daemon`: user-level daemon runtime, state/IPC path resolution, start/status/stop lifecycle, Unix socket serving, and `llm-wiki mcp` stdio proxy support.
-- `internal/mcp`: Go MCP SDK server and stream transport that expose the same service semantics as CLI through `llm_wiki_validate`, `llm_wiki_lint`, `llm_wiki_index`, `llm_wiki_graph`, and `llm_wiki_query_pack`.
+- `internal/daemon`: user-level daemon runtime, state/IPC path resolution, start/status/stop/replace lifecycle, Unix socket serving, graceful drain replacement, and `llm-wiki mcp` stdio proxy support.
+- `internal/mcp`: Go MCP SDK server and stream transport that expose the same service semantics as CLI through `llm_wiki_validate`, `llm_wiki_lint`, `llm_wiki_index`, `llm_wiki_graph`, and `llm_wiki_query_pack`; path-optional MCP tools can receive a per-connection default vault from the daemon socket context.
 - `internal/importexport`: fixture-level NVK import/export planning and dry-run behavior.
 - `packages/hosts/{claude,codex,reasonix,portable}`: host integration notes/templates only, including MCP config examples; no duplicated OKF core logic.
 
@@ -34,4 +34,4 @@ Claude Code, Codex, Reasonix, and portable agents should invoke the same CLI/MCP
 
 ## Runtime Strategy
 
-`llm-wiki mcp` is the default and supported MCP runtime, and it is daemon-backed. The command auto-starts or connects to the user-level daemon, then proxies stdio MCP bytes to the daemon Unix socket. Each host agent may run its own short-lived `llm-wiki mcp` stdio proxy, but those proxies share one daemon per resolved daemon state directory. When a proxy has a different `LLM_WIKI_VAULT` from the running daemon, startup treats the daemon as stale and restarts it so path-optional MCP tools use the host-configured default vault. `llm-wiki daemon start/status/doctor/stop` manage the shared backend process. Host templates should keep using plain `llm-wiki mcp`; `--daemon` is accepted only as a compatibility no-op because daemon-backed MCP is now the default.
+`llm-wiki mcp` is the default and supported MCP runtime, and it is daemon-backed. The command auto-starts or connects to the user-level daemon, sends a private socket frame with the proxy's `LLM_WIKI_VAULT`, then proxies stdio MCP bytes to the daemon Unix socket. Each host agent may run its own short-lived `llm-wiki mcp` stdio proxy, and those proxies can share one daemon per resolved daemon state directory even when their vault defaults differ. `llm-wiki daemon start/status/doctor/stop/replace` manage the shared backend process. `replace` drains the old daemon listener and starts a new daemon while accepted MCP streams continue until their clients close. Host templates should keep using plain `llm-wiki mcp`; `--daemon` is accepted only as a compatibility no-op because daemon-backed MCP is now the default.

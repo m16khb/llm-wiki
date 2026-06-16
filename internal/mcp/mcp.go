@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"io"
+	"strings"
 
 	"github.com/m16khb/llm-wiki/internal/graph"
 	"github.com/m16khb/llm-wiki/internal/index"
@@ -12,6 +13,8 @@ import (
 	"github.com/m16khb/llm-wiki/internal/vault"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+type defaultVaultContextKey struct{}
 
 type Tool struct {
 	Name        string         `json:"name"`
@@ -83,8 +86,21 @@ func RunStream(ctx context.Context, rwc io.ReadWriteCloser) error {
 	return NewServer().Run(ctx, NewStreamTransport(rwc))
 }
 
-func validateTool(_ context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (*mcpsdk.CallToolResult, validate.Result, error) {
-	root, err := vault.Resolve(args.Path)
+func WithDefaultVault(ctx context.Context, path string) context.Context {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, defaultVaultContextKey{}, path)
+}
+
+func defaultVault(ctx context.Context) string {
+	path, _ := ctx.Value(defaultVaultContextKey{}).(string)
+	return path
+}
+
+func validateTool(ctx context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (*mcpsdk.CallToolResult, validate.Result, error) {
+	root, err := vault.ResolveWithDefault(args.Path, defaultVault(ctx))
 	if err != nil {
 		return nil, validate.Result{}, err
 	}
@@ -92,8 +108,8 @@ func validateTool(_ context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (
 	return nil, result, err
 }
 
-func lintTool(_ context.Context, _ *mcpsdk.CallToolRequest, args lintArgs) (*mcpsdk.CallToolResult, validate.Result, error) {
-	root, err := vault.Resolve(args.Path)
+func lintTool(ctx context.Context, _ *mcpsdk.CallToolRequest, args lintArgs) (*mcpsdk.CallToolResult, validate.Result, error) {
+	root, err := vault.ResolveWithDefault(args.Path, defaultVault(ctx))
 	if err != nil {
 		return nil, validate.Result{}, err
 	}
@@ -101,8 +117,8 @@ func lintTool(_ context.Context, _ *mcpsdk.CallToolRequest, args lintArgs) (*mcp
 	return nil, result, err
 }
 
-func indexTool(_ context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (*mcpsdk.CallToolResult, index.Result, error) {
-	root, err := vault.Resolve(args.Path)
+func indexTool(ctx context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (*mcpsdk.CallToolResult, index.Result, error) {
+	root, err := vault.ResolveWithDefault(args.Path, defaultVault(ctx))
 	if err != nil {
 		return nil, index.Result{}, err
 	}
@@ -110,8 +126,8 @@ func indexTool(_ context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (*mc
 	return nil, result, err
 }
 
-func graphTool(_ context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (*mcpsdk.CallToolResult, graph.Result, error) {
-	root, err := vault.Resolve(args.Path)
+func graphTool(ctx context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (*mcpsdk.CallToolResult, graph.Result, error) {
+	root, err := vault.ResolveWithDefault(args.Path, defaultVault(ctx))
 	if err != nil {
 		return nil, graph.Result{}, err
 	}
@@ -119,8 +135,8 @@ func graphTool(_ context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (*mc
 	return nil, result, err
 }
 
-func queryPackTool(_ context.Context, _ *mcpsdk.CallToolRequest, args queryPackArgs) (*mcpsdk.CallToolResult, querypack.Result, error) {
-	root, err := vault.Resolve(args.Path)
+func queryPackTool(ctx context.Context, _ *mcpsdk.CallToolRequest, args queryPackArgs) (*mcpsdk.CallToolResult, querypack.Result, error) {
+	root, err := vault.ResolveWithDefault(args.Path, defaultVault(ctx))
 	if err != nil {
 		return nil, querypack.Result{}, err
 	}

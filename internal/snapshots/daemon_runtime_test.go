@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"syscall"
 	"testing"
 	"time"
 
@@ -96,7 +97,7 @@ func TestMCPCommandAutoStartsDaemonAndProxiesTools(t *testing.T) {
 	}
 }
 
-func TestMCPCommandRestartsDaemonWhenVaultEnvChanges(t *testing.T) {
+func TestMCPCommandUsesPerConnectionVaultWithoutRestartingDaemon(t *testing.T) {
 	repo := repoRoot(t)
 	bin := buildCLI(t, repo)
 	stateDir := shortTempDir(t)
@@ -112,33 +113,123 @@ func TestMCPCommandRestartsDaemonWhenVaultEnvChanges(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	cmd := exec.Command(bin, "mcp")
-	cmd.Dir = repo
-	cmd.Env = append(os.Environ(), stateEnv, "LLM_WIKI_VAULT="+filepath.Join(repo, "fixtures", "okf-minimal"))
-	client := mcpsdk.NewClient(&mcpsdk.Implementation{Name: "llm-wiki-daemon-vault-test"}, nil)
-	session, err := client.Connect(ctx, &mcpsdk.CommandTransport{Command: cmd}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer session.Close()
+	sessionA := connectMCPCommand(t, ctx, repo, bin, stateEnv, filepath.Join(repo, "fixtures", "okf-minimal"))
+	defer sessionA.Close()
 
-	result, err := session.CallTool(ctx, &mcpsdk.CallToolParams{
+	resultA, err := sessionA.CallTool(ctx, &mcpsdk.CallToolParams{
 		Name:      "llm_wiki_validate",
 		Arguments: map[string]any{},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var dto validate.Result
-	decodeStructuredContent(t, result.StructuredContent, &dto)
-	if !dto.OK || dto.ConceptCount != 1 {
-		t.Fatalf("dto = %#v, want validate to default to proxy vault env", dto)
+	var dtoA validate.Result
+	decodeStructuredContent(t, resultA.StructuredContent, &dtoA)
+	if !dtoA.OK || dtoA.ConceptCount != 1 {
+		t.Fatalf("dto A = %#v, want validate to default to proxy A vault env", dtoA)
 	}
 
-	restartedWithVault := runDaemonStatus(t, repo, bin, []string{stateEnv}, "status")
-	if restartedWithVault.PID == startedWithoutVault.PID {
-		t.Fatalf("daemon pid = %d, want restart from stale no-vault daemon", restartedWithVault.PID)
+	sessionB := connectMCPCommand(t, ctx, repo, bin, stateEnv, filepath.Join(repo, "fixtures", "querypack-graph"))
+	defer sessionB.Close()
+	resultB, err := sessionB.CallTool(ctx, &mcpsdk.CallToolParams{
+		Name:      "llm_wiki_validate",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
+	var dtoB validate.Result
+	decodeStructuredContent(t, resultB.StructuredContent, &dtoB)
+	if !dtoB.OK || dtoB.ConceptCount != 4 {
+		t.Fatalf("dto B = %#v, want validate to default to proxy B vault env", dtoB)
+	}
+
+	status := runDaemonStatus(t, repo, bin, []string{stateEnv}, "status")
+	if status.PID != startedWithoutVault.PID {
+		t.Fatalf("daemon pid = %d, want same pid %d across vault env changes", status.PID, startedWithoutVault.PID)
+	}
+}
+
+func TestDaemonReplaceDrainsExistingMCPSession(t *testing.T) {
+	repo := repoRoot(t)
+	bin := buildCLI(t, repo)
+	stateDir := shortTempDir(t)
+	stateEnv := "LLM_WIKI_STATE_DIR=" + stateDir
+	t.Cleanup(func() {
+		_ = runCLI(t, repo, bin, []string{stateEnv}, "daemon", "stop", "--json")
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	sessionA := connectMCPCommand(t, ctx, repo, bin, stateEnv, filepath.Join(repo, "fixtures", "okf-minimal"))
+	statusBefore := runDaemonStatus(t, repo, bin, []string{stateEnv}, "status")
+	if !statusBefore.Running || statusBefore.PID == 0 {
+		t.Fatalf("daemon status before replace = %#v, want running daemon", statusBefore)
+	}
+
+	replaced := runDaemonStatus(t, repo, bin, []string{stateEnv}, "replace")
+	if !replaced.Running || replaced.PID == 0 || replaced.PID == statusBefore.PID {
+		t.Fatalf("daemon replace = %#v, want new running pid different from %d", replaced, statusBefore.PID)
+	}
+
+	resultA, err := sessionA.CallTool(ctx, &mcpsdk.CallToolParams{
+		Name:      "llm_wiki_validate",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dtoA validate.Result
+	decodeStructuredContent(t, resultA.StructuredContent, &dtoA)
+	if !dtoA.OK || dtoA.ConceptCount != 1 {
+		t.Fatalf("dto A after replace = %#v, want old drained session to keep serving", dtoA)
+	}
+
+	sessionB := connectMCPCommand(t, ctx, repo, bin, stateEnv, filepath.Join(repo, "fixtures", "querypack-graph"))
+	defer sessionB.Close()
+	resultB, err := sessionB.CallTool(ctx, &mcpsdk.CallToolParams{
+		Name:      "llm_wiki_validate",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dtoB validate.Result
+	decodeStructuredContent(t, resultB.StructuredContent, &dtoB)
+	if !dtoB.OK || dtoB.ConceptCount != 4 {
+		t.Fatalf("dto B after replace = %#v, want new session to use new daemon", dtoB)
+	}
+
+	if err := sessionA.Close(); err != nil {
+		t.Fatal(err)
+	}
+	waitForPIDExit(t, statusBefore.PID, 10*time.Second)
+}
+
+func connectMCPCommand(t *testing.T, ctx context.Context, repo, bin, stateEnv, vaultPath string) *mcpsdk.ClientSession {
+	t.Helper()
+	cmd := exec.Command(bin, "mcp")
+	cmd.Dir = repo
+	cmd.Env = append(os.Environ(), stateEnv, "LLM_WIKI_VAULT="+vaultPath)
+	client := mcpsdk.NewClient(&mcpsdk.Implementation{Name: "llm-wiki-daemon-test"}, nil)
+	session, err := client.Connect(ctx, &mcpsdk.CommandTransport{Command: cmd}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return session
+}
+
+func waitForPIDExit(t *testing.T, pid int, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		proc, err := os.FindProcess(pid)
+		if err != nil || proc.Signal(os.Signal(syscall.Signal(0))) != nil {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("pid %d still alive after %s", pid, timeout)
 }
 
 func buildCLI(t *testing.T, repo string) string {

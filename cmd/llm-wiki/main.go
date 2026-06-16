@@ -410,7 +410,7 @@ func daemonCmd() *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&internal, "internal", false, "run the daemon server process")
 	_ = cmd.Flags().MarkHidden("internal")
-	cmd.AddCommand(daemonActionCmd("status", daemon.Status), daemonActionCmd("doctor", daemon.Doctor), daemonActionCmd("start", daemon.Start), daemonActionCmd("stop", daemon.Stop))
+	cmd.AddCommand(daemonActionCmd("status", daemon.Status), daemonActionCmd("doctor", daemon.Doctor), daemonActionCmd("start", daemon.Start), daemonActionCmd("stop", daemon.Stop), daemonActionCmd("replace", daemon.Replace))
 	return cmd
 }
 
