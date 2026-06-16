@@ -1,0 +1,87 @@
+{
+  "goals": [
+    {
+      "id": "G1",
+      "title": "Verify llm-wiki information collection",
+      "objective": "Prove that llm-wiki can validate an OKF bundle and retrieve bounded context through both CLI/service code and the host-exposed MCP tools.",
+      "status": "pass",
+      "successCriteria": [
+        {
+          "id": "G1-C1",
+          "scenario": "go test ./internal/mcp ./internal/querypack ./internal/snapshots and go run CLI validate/query-pack against fixtures",
+          "channel": "auxiliary CLI",
+          "expectedEvidence": ".agent-harness/turing/evidence/G1-C1-cli-querypack.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G1-C1-cli-querypack.txt",
+          "cleanupReceipt": "no persistent runtime spawned",
+          "ultraqaClasses": ["misleading_success", "stale_state"]
+        },
+        {
+          "id": "G1-C2",
+          "scenario": "Call current Codex llm-wiki MCP tools against fixtures/querypack-graph and confirm validation plus context-only retrieval",
+          "channel": "MCP tool call",
+          "expectedEvidence": ".agent-harness/turing/evidence/G1-C2-mcp-tools.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G1-C2-mcp-tools.txt",
+          "cleanupReceipt": "no runtime spawned directly by MCP tool calls",
+          "ultraqaClasses": ["misleading_success", "stale_state"]
+        },
+        {
+          "id": "G1-C3",
+          "scenario": "Run daemon-backed stdio proxy in isolated state, then stop daemon and verify cleanup",
+          "channel": "auxiliary CLI",
+          "expectedEvidence": ".agent-harness/turing/evidence/G1-C3-daemon-proxy.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G1-C3-daemon-proxy.txt",
+          "cleanupReceipt": "daemon stopped and temporary state directory removed",
+          "ultraqaClasses": ["hung_command", "stale_state"]
+        }
+      ]
+    },
+    {
+      "id": "G2",
+      "title": "Audit knowledge-base llm-wiki vault",
+      "objective": "Verify that /Users/habin/workspace/knowledge-base/llm-wiki satisfies the OKF contract and is suitable for llm-wiki retrieval.",
+      "status": "pass",
+      "successCriteria": [
+        {
+          "id": "G2-C1",
+          "scenario": "Run llm-wiki validate, lint, graph, and query-pack against the entire configured vault.",
+          "channel": "auxiliary CLI",
+          "expectedEvidence": ".agent-harness/turing/evidence/G2-vault-tool-audit.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G2-vault-tool-audit.txt",
+          "cleanupReceipt": "read-only CLI audit; no runtime spawned",
+          "ultraqaClasses": ["misleading_success", "stale_state"]
+        },
+        {
+          "id": "G2-C2",
+          "scenario": "Scan all vault files for non-Markdown files, path-shape drift, missing frontmatter/type/title, empty bodies, provenance gaps, and root-index link coverage.",
+          "channel": "auxiliary CLI",
+          "expectedEvidence": ".agent-harness/turing/evidence/G2-vault-supplemental-audit.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G2-vault-supplemental-audit.txt",
+          "cleanupReceipt": "removed temporary vault copy",
+          "ultraqaClasses": ["misleading_success", "stale_state"]
+        },
+        {
+          "id": "G2-C3",
+          "scenario": "Call live llm-wiki MCP validate, lint, and query-pack tools against the default vault.",
+          "channel": "MCP tool call",
+          "expectedEvidence": ".agent-harness/turing/evidence/G2-vault-mcp-retrieval-audit.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G2-vault-mcp-retrieval-audit.txt",
+          "cleanupReceipt": "no runtime spawned directly by MCP tool calls",
+          "ultraqaClasses": ["misleading_success", "stale_state"]
+        }
+      ]
+    }
+  ],
+  "metrics": {
+    "evidenceCoverage": 1.0,
+    "reworkRate": 0.17,
+    "cycleEfficiency": 1.0,
+    "parallelizationRatio": 1.0,
+    "cleanupCompliance": 1.0
+  }
+}

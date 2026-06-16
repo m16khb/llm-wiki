@@ -1,0 +1,89 @@
+## knowledge-base/llm-wiki OKF and llm-wiki tool audit
+ts=2026-06-16T06:49:30Z
+vault=/Users/habin/workspace/knowledge-base/llm-wiki
+
+$ llm-wiki validate --json
+{
+  "ok": true,
+  "okf_version": "0.1",
+  "bundle_root": "/Users/habin/workspace/knowledge-base/llm-wiki",
+  "concept_count": 211,
+  "reserved_files": [
+    "index.md",
+    "log.md"
+  ],
+  "errors": [],
+  "warnings": []
+}
+validate_exit=0
+
+$ llm-wiki lint --json
+{
+  "ok": true,
+  "okf_version": "0.1",
+  "bundle_root": "/Users/habin/workspace/knowledge-base/llm-wiki",
+  "concept_count": 211,
+  "reserved_files": [
+    "index.md",
+    "log.md"
+  ],
+  "errors": [],
+  "warnings": []
+}
+lint_exit=0
+
+$ llm-wiki graph --json summary
+{
+  "ok": true,
+  "bundle_root": "/Users/habin/workspace/knowledge-base/llm-wiki",
+  "node_count": 211,
+  "edge_count": 1666,
+  "first_nodes": [
+    {
+      "id": "topics/bubbletap/raw/repos/bubbletap-ncp-infra-repo.md",
+      "title": "Bubbletap NCP/NKS Infra Repository Snapshot (2026-05-22)",
+      "type": "repos"
+    },
+    {
+      "id": "topics/bubbletap/wiki/concepts/bubbletap-ai-chat-platform-experience.md",
+      "title": "Bubbletap AI Chat Platform Experience",
+      "type": "concept"
+    },
+    {
+      "id": "topics/bubbletap/wiki/concepts/bubbletap-ncp-nks-platform.md",
+      "title": "Bubbletap NCP/NKS GitOps Platform",
+      "type": "concept"
+    },
+    {
+      "id": "topics/bubbletap/wiki/references/bubbletap-ncp-infra-reference-bundle.md",
+      "title": "Bubbletap Ncp Infra Reference Bundle 2026-05-23",
+      "type": "reference"
+    },
+    {
+      "id": "topics/bubbletap/wiki/references/bubbletap.md",
+      "title": "Bubbletap",
+      "type": "entity"
+    }
+  ]
+}
+graph_exit=0
+
+$ llm-wiki query-pack "llm-wiki 정보 수집 검증" --json summary
+{
+  "ok": true,
+  "context_only": true,
+  "context_count": 8,
+  "paths": [
+    "topics/dev-fundamentals/raw/articles/karpathy-llm-wiki.md",
+    "topics/dev-fundamentals/wiki/concepts/llm-wiki-pattern.md",
+    "topics/dev-fundamentals/wiki/concepts/three-layer-architecture.md",
+    "topics/dev-fundamentals/wiki/concepts/llm-wiki-hook-context-map.md",
+    "topics/dev-fundamentals/output/2026-05-21-wiki-bootstrap.md",
+    "topics/dev-fundamentals/raw/articles/diffie-hellman.md",
+    "topics/career/wiki/references/resume-reference-bundle.md",
+    "topics/dev-fundamentals/wiki/concepts/mcp-fundamentals.md"
+  ]
+}
+query_pack_exit=0
+
+cleanup: read-only CLI audit; no runtime spawned

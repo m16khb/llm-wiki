@@ -1,0 +1,37 @@
+## Supplemental vault content-shape audit v3
+ts=2026-06-16T06:53:00Z
+vault=/Users/habin/workspace/knowledge-base/llm-wiki
+
+$ full file inventory
+total_files=212
+markdown_files=212
+non_markdown_files=0
+
+$ structure and content scanner
+reserved_files_count=1
+reserved_file=index.md
+concept_files=211
+path_shape_findings=0
+missing_frontmatter=0
+missing_type=0
+missing_title=0
+empty_body=0
+todo_marker_files=1
+todo_marker_file=topics/dev-fundamentals/wiki/concepts/go-conventions.md
+raw_without_provenance=0
+wiki_with_raw_marker=0
+index_concept_links=211
+missing_from_index=0
+stale_index_links=0
+
+$ generated index format comparison on temp copy
+{
+  "ok": true,
+  "bundle_root": "/private/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.mm84RHzntQ/vault",
+  "path": "/private/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.mm84RHzntQ/vault/index.md",
+  "count": 211
+}
+root_index_matches_generated_format=false
+note=manual root index differs from current simple generator; see link coverage above for freshness
+
+cleanup: removed temporary vault copy

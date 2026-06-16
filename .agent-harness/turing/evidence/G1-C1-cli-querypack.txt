@@ -1,0 +1,43 @@
+## G1-C1 CLI/service verification
+ts=2026-06-16T06:41:45Z
+
+$ go test ./internal/mcp ./internal/querypack ./internal/snapshots
+ok  	github.com/m16khb/llm-wiki/internal/mcp	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/querypack	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/snapshots	(cached)
+
+$ go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
+{
+  "ok": true,
+  "okf_version": "0.1",
+  "bundle_root": "/Users/habin/workspace/llm-wiki/fixtures/okf-minimal",
+  "concept_count": 1,
+  "reserved_files": [
+    "index.md",
+    "log.md"
+  ],
+  "errors": [],
+  "warnings": []
+}
+
+$ go run ./cmd/llm-wiki query-pack fixtures/querypack-graph mcp --json
+{
+  "ok": true,
+  "bundle_root": "/Users/habin/workspace/llm-wiki/fixtures/querypack-graph",
+  "question": "mcp",
+  "context_only": true,
+  "contexts": [
+    {
+      "path": "mcp.md",
+      "title": "Model Context Protocol",
+      "snippet": "# Model Context Protocol\n\nMCP lets host agents call local tools through a standard protocol.\n\nIt belongs with [[agent-graph]] because graph traversal gives an agent nearby concepts before it writes an answer.\n\nThis note also links to [[missing-concept]] so query-pack can ignore broken graph neighbors."
+    },
+    {
+      "path": "agent-graph.md",
+      "title": "Agent Graph",
+      "snippet": "# Agent Graph\n\nThe agent graph connects concepts with wiki links. A host agent follows graph seeds and cites concept paths."
+    }
+  ]
+}
+
+cleanup: no persistent runtime spawned by G1-C1

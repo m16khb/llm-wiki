@@ -1,0 +1,39 @@
+## G1-C3 daemon-backed MCP proxy verification
+ts=2026-06-16T06:43:19Z
+tmp_state=/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.KSSuT0iUFd
+
+$ LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki mcp < /dev/null
+
+$ LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki daemon status --json
+{
+  "ok": true,
+  "action": "status",
+  "implemented": true,
+  "running": true,
+  "pid": 20622,
+  "state_dir": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.KSSuT0iUFd",
+  "socket_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.KSSuT0iUFd/daemon.sock",
+  "pid_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.KSSuT0iUFd/daemon.pid",
+  "lock_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.KSSuT0iUFd/daemon.lock",
+  "message": "daemon is running",
+  "warnings": []
+}
+
+$ LLM_WIKI_STATE_DIR="$tmp_state" go run ./cmd/llm-wiki daemon stop --json
+{
+  "ok": true,
+  "action": "stop",
+  "implemented": true,
+  "running": false,
+  "state_dir": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.KSSuT0iUFd",
+  "socket_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.KSSuT0iUFd/daemon.sock",
+  "pid_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.KSSuT0iUFd/daemon.pid",
+  "lock_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.KSSuT0iUFd/daemon.lock",
+  "message": "daemon is stopped",
+  "warnings": []
+}
+
+$ post-stop socket/pid check
+socket_still_exists=false
+pid_file_after_stop=absent
+cleanup: daemon stopped; removed tmp_state /var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.KSSuT0iUFd

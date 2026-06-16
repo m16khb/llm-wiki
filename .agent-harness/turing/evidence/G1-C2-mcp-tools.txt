@@ -1,0 +1,18 @@
+## G1-C2 MCP tool verification
+ts=2026-06-16T06:42:16Z
+
+MCP server namespace was discoverable in the current Codex session as `mcp__llm_wiki`.
+
+$ mcp__llm_wiki.llm_wiki_validate(path="/Users/habin/workspace/llm-wiki/fixtures/querypack-graph")
+{"bundle_root":"/Users/habin/workspace/llm-wiki/fixtures/querypack-graph","concept_count":4,"errors":[],"ok":true,"okf_version":"0.1","reserved_files":["index.md","log.md"],"warnings":[]}
+
+$ mcp__llm_wiki.llm_wiki_query_pack(path="/Users/habin/workspace/llm-wiki/fixtures/querypack-graph", question="mcp")
+{"bundle_root":"/Users/habin/workspace/llm-wiki/fixtures/querypack-graph","context_only":true,"contexts":[{"path":"mcp.md","title":"Model Context Protocol"},{"path":"agent-graph.md","title":"Agent Graph"}],"ok":true,"question":"mcp"}
+
+$ mcp__llm_wiki.llm_wiki_validate()
+{"bundle_root":"/Users/habin/workspace/knowledge-base/llm-wiki","concept_count":211,"errors":[],"ok":true,"okf_version":"0.1","reserved_files":["index.md","log.md"],"warnings":[]}
+
+$ mcp__llm_wiki.llm_wiki_query_pack(question="llm-wiki 정보 수집 검증")
+{"bundle_root":"/Users/habin/workspace/knowledge-base/llm-wiki","context_only":true,"contexts":[{"path":"topics/dev-fundamentals/raw/articles/karpathy-llm-wiki.md","title":"Karpathy — LLM Wiki Pattern (Gist)"},{"path":"topics/dev-fundamentals/wiki/concepts/llm-wiki-pattern.md","title":"LLM Wiki Pattern"},{"path":"topics/dev-fundamentals/wiki/concepts/three-layer-architecture.md","title":"Three-Layer Architecture (LLM Wiki)"},{"path":"topics/dev-fundamentals/wiki/concepts/llm-wiki-hook-context-map.md","title":"LLM Wiki Hook Tech Context Retrieval Map 2026-05-23"},{"path":"topics/dev-fundamentals/output/2026-05-21-wiki-bootstrap.md","title":"2026-05-21 — Wiki Bootstrap Summary"},{"path":"topics/dev-fundamentals/raw/articles/diffie-hellman.md","title":"Diffie-Hellman & ECDH Key Exchange"},{"path":"topics/career/wiki/references/resume-reference-bundle.md","title":"Resume Reference Bundle 2026-05-23"},{"path":"topics/dev-fundamentals/wiki/concepts/mcp-fundamentals.md","title":"MCP Fundamentals"}],"ok":true,"question":"llm-wiki 정보 수집 검증"}
+
+cleanup: no runtime spawned directly by MCP tool calls in this criterion

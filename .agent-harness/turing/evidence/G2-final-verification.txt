@@ -1,0 +1,40 @@
+## G2 final verification
+ts=2026-06-16T06:54:51Z
+
+$ jq . .agent-harness/turing/goals.json
+goals_json_valid=true
+
+$ llm-wiki validate --json
+{
+  "ok": true,
+  "okf_version": "0.1",
+  "bundle_root": "/Users/habin/workspace/knowledge-base/llm-wiki",
+  "concept_count": 211,
+  "reserved_files": [
+    "index.md",
+    "log.md"
+  ],
+  "errors": [],
+  "warnings": []
+}
+
+$ llm-wiki lint --json
+{
+  "ok": true,
+  "okf_version": "0.1",
+  "bundle_root": "/Users/habin/workspace/knowledge-base/llm-wiki",
+  "concept_count": 211,
+  "reserved_files": [
+    "index.md",
+    "log.md"
+  ],
+  "errors": [],
+  "warnings": []
+}
+
+$ evidence file presence
+present=.agent-harness/turing/evidence/G2-vault-tool-audit.txt
+present=.agent-harness/turing/evidence/G2-vault-supplemental-audit.txt
+present=.agent-harness/turing/evidence/G2-vault-mcp-retrieval-audit.txt
+
+cleanup: read-only final verification; no runtime spawned

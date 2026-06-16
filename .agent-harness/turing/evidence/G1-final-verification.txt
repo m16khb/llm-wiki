@@ -1,0 +1,165 @@
+## Final local verification gate
+ts=2026-06-16T06:43:56Z
+
+$ gofmt -l cmd internal
+gofmt_check=clean
+
+$ go vet ./...
+
+$ go test ./...
+ok  	github.com/m16khb/llm-wiki/cmd/llm-wiki	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/daemon	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/frontmatter	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/graph	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/hooks	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/hostsetup	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/importexport	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/index	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/lint	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/logstore	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/mcp	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/okf	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/querypack	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/snapshots	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/validate	(cached)
+ok  	github.com/m16khb/llm-wiki/internal/vault	(cached)
+
+$ go test ./internal/snapshots
+ok  	github.com/m16khb/llm-wiki/internal/snapshots	(cached)
+
+$ go run ./cmd/llm-wiki --version
+llm-wiki 0.1.0
+
+$ go run ./cmd/llm-wiki setup-hosts --json
+{
+  "ok": true,
+  "applied": false,
+  "binary_path": "/Users/habin/.local/bin/llm-wiki",
+  "project_dir": "/Users/habin/workspace/llm-wiki",
+  "vault_path": "/Users/habin/workspace/knowledge-base/llm-wiki",
+  "hosts": [
+    {
+      "name": "codex",
+      "config_path": "/Users/habin/.codex/config.toml",
+      "changed": true,
+      "action": "would_write",
+      "command": "/Users/habin/.local/bin/llm-wiki",
+      "args": [
+        "mcp"
+      ]
+    },
+    {
+      "name": "claude",
+      "config_path": "/Users/habin/workspace/llm-wiki/.mcp.json",
+      "changed": false,
+      "action": "unchanged",
+      "command": "/Users/habin/.local/bin/llm-wiki",
+      "args": [
+        "mcp"
+      ]
+    },
+    {
+      "name": "reasonix",
+      "config_path": "/Users/habin/workspace/llm-wiki/reasonix.toml",
+      "changed": false,
+      "action": "unchanged",
+      "command": "/Users/habin/.local/bin/llm-wiki",
+      "args": [
+        "mcp"
+      ]
+    }
+  ],
+  "warnings": []
+}
+
+$ go run ./cmd/llm-wiki daemon status --json
+{
+  "ok": true,
+  "action": "status",
+  "implemented": true,
+  "running": true,
+  "pid": 9417,
+  "state_dir": "/Users/habin/.local/state/llm-wiki",
+  "socket_path": "/Users/habin/.local/state/llm-wiki/daemon.sock",
+  "pid_path": "/Users/habin/.local/state/llm-wiki/daemon.pid",
+  "lock_path": "/Users/habin/.local/state/llm-wiki/daemon.lock",
+  "message": "daemon is running",
+  "warnings": []
+}
+
+$ go run ./cmd/llm-wiki validate fixtures/okf-minimal --json
+{
+  "ok": true,
+  "okf_version": "0.1",
+  "bundle_root": "/Users/habin/workspace/llm-wiki/fixtures/okf-minimal",
+  "concept_count": 1,
+  "reserved_files": [
+    "index.md",
+    "log.md"
+  ],
+  "errors": [],
+  "warnings": []
+}
+
+$ go run ./cmd/llm-wiki validate fixtures/okf-invalid-missing-type --json (expected exit 1)
+{
+  "ok": false,
+  "okf_version": "0.1",
+  "bundle_root": "/Users/habin/workspace/llm-wiki/fixtures/okf-invalid-missing-type",
+  "concept_count": 1,
+  "reserved_files": [
+    "index.md",
+    "log.md"
+  ],
+  "errors": [
+    "bad.md: missing required frontmatter field type"
+  ],
+  "warnings": []
+}
+exit status 1
+invalid_fixture_exit=1
+
+$ isolated mcp < /dev/null smoke
+{
+  "ok": true,
+  "action": "stop",
+  "implemented": true,
+  "running": false,
+  "state_dir": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.Z0vz9azAFD",
+  "socket_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.Z0vz9azAFD/daemon.sock",
+  "pid_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.Z0vz9azAFD/daemon.pid",
+  "lock_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.Z0vz9azAFD/daemon.lock",
+  "message": "daemon is stopped",
+  "warnings": []
+}
+isolated_mcp_cleanup=removed /var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.Z0vz9azAFD
+
+$ isolated daemon replace smoke
+{
+  "ok": true,
+  "action": "replace",
+  "implemented": true,
+  "running": true,
+  "pid": 22348,
+  "state_dir": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.UWK3fHHFis",
+  "socket_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.UWK3fHHFis/daemon.sock",
+  "pid_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.UWK3fHHFis/daemon.pid",
+  "lock_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.UWK3fHHFis/daemon.lock",
+  "message": "daemon is running",
+  "warnings": []
+}
+{
+  "ok": true,
+  "action": "stop",
+  "implemented": true,
+  "running": false,
+  "state_dir": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.UWK3fHHFis",
+  "socket_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.UWK3fHHFis/daemon.sock",
+  "pid_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.UWK3fHHFis/daemon.pid",
+  "lock_path": "/var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.UWK3fHHFis/daemon.lock",
+  "message": "daemon is stopped",
+  "warnings": []
+}
+isolated_replace_cleanup=removed /var/folders/rz/75gxg1nj7qn2rtxt195j292w0000gn/T/tmp.UWK3fHHFis
+
+cleanup: no default daemon stopped; only isolated temp state dirs removed

@@ -1,0 +1,17 @@
+## knowledge-base/llm-wiki MCP retrieval audit
+ts=2026-06-16T06:53:35Z
+vault=/Users/habin/workspace/knowledge-base/llm-wiki
+
+$ mcp__llm_wiki.llm_wiki_validate()
+{"bundle_root":"/Users/habin/workspace/knowledge-base/llm-wiki","concept_count":211,"errors":[],"ok":true,"okf_version":"0.1","reserved_files":["index.md","log.md"],"warnings":[]}
+
+$ mcp__llm_wiki.llm_wiki_lint()
+{"bundle_root":"/Users/habin/workspace/knowledge-base/llm-wiki","concept_count":211,"errors":[],"ok":true,"okf_version":"0.1","reserved_files":["index.md","log.md"],"warnings":[]}
+
+$ mcp__llm_wiki.llm_wiki_query_pack(question="stop hook continue decision semantics")
+{"ok":true,"context_only":true,"paths":["topics/dev-fundamentals/raw/notes/2026-06-04-stop-hook-continue-semantics.md","topics/dev-fundamentals/wiki/concepts/agent-stop-hook-contract.md","topics/dev-fundamentals/wiki/concepts/llm-wiki-hook-context-map.md","topics/dev-fundamentals/wiki/concepts/agent-agency-self-augmentation-decisions.md","topics/dev-fundamentals/wiki/concepts/agent-agency-self-augmentation-loop.md","topics/dev-fundamentals/wiki/concepts/mcp-fundamentals.md","topics/side-projects/wiki/concepts/nextcandle-repository-architecture.md","topics/side-projects/wiki/references/myunghwa-api-reference-bundle.md"]}
+
+$ mcp__llm_wiki.llm_wiki_query_pack(question="resume public export guide privacy")
+{"ok":true,"context_only":true,"paths":["topics/career/wiki/concepts/career-public-export-guide.md","topics/career/output/2026-05-22-career-resume-ingest.md","topics/career/raw/notes/career-resume-habin-kim.md","topics/career/wiki/references/resume-reference-bundle.md","topics/career/wiki/concepts/resume-story-bank.md","topics/dev-fundamentals/raw/articles/go-style-google.md","topics/dev-fundamentals/raw/articles/go-style-uber.md","topics/dev-fundamentals/raw/articles/ts-airbnb-style.md"]}
+
+cleanup: no runtime spawned directly by MCP tool calls in this criterion
