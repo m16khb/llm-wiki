@@ -139,8 +139,28 @@ func resolveOptions(options Options) (Options, error) {
 		if err != nil {
 			return Options{}, err
 		}
+	} else {
+		options.VaultPath, err = DefaultVaultPath(options.HomeDir)
+		if err != nil {
+			return Options{}, err
+		}
 	}
 	return options, nil
+}
+
+func DefaultVaultPath(homeDir string) (string, error) {
+	if homeDir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		homeDir = home
+	}
+	homeDir, err := filepath.Abs(homeDir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homeDir, "workspace", "knowledge-base", "llm-wiki"), nil
 }
 
 func codexBlock(binary string, vaultPath string) string {

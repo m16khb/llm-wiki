@@ -43,7 +43,7 @@ Use the shared setup command before host-specific debugging:
 
 ```bash
 llm-wiki setup-hosts --json
-llm-wiki setup-hosts --apply --vault "$HOME/workspace/knowledge-base/llm-wiki" --json
+llm-wiki setup-hosts --apply --json
 ```
 
 The dry-run reports the files that would change. `--apply` writes:
@@ -52,10 +52,11 @@ The dry-run reports the files that would change. `--apply` writes:
 - Claude Code project MCP config at `.mcp.json`
 - Reasonix project plugin config at `reasonix.toml`
 
-All three entries call the same `llm-wiki mcp` binary. When `--vault` is
-provided, host configs pass it as `LLM_WIKI_VAULT` so MCP tool calls can omit
-`path`. The command does not remove legacy plugins or caches; clean those up
-separately if a host still loads an old integration.
+All three entries call the same `llm-wiki mcp` binary. Host configs pass
+`LLM_WIKI_VAULT` so MCP tool calls can omit `path`; `--vault` overrides the
+path, and omitted values default to `$HOME/workspace/knowledge-base/llm-wiki`.
+The command does not remove legacy plugins or caches; clean those up separately
+if a host still loads an old integration.
 
 Claude Code:
 

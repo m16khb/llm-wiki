@@ -14,6 +14,9 @@ llm-wiki mcp
 ```
 
 Set `LLM_WIKI_VAULT` in the MCP server env when tool calls should default to a
-shared vault instead of requiring `path` every time.
+shared vault instead of requiring `path` every time. The shared
+`setup-hosts` command writes this env var for Codex, Claude Code, and Reasonix;
+when no `--vault` is provided it defaults to
+`$HOME/workspace/knowledge-base/llm-wiki`.
 
 For host-neutral smoke checks, see `docs/host-mcp-smoke.md`.

@@ -9,7 +9,7 @@ logic.
 Prefer the shared setup command:
 
 ```bash
-llm-wiki setup-hosts --apply --vault "$HOME/workspace/knowledge-base/llm-wiki" --json
+llm-wiki setup-hosts --apply --json
 ```
 
 For manual setup, use `packages/hosts/reasonix/reasonix.example.toml` as a
@@ -26,8 +26,8 @@ env = { LLM_WIKI_VAULT = "/path/to/llm-wiki-vault" }
 
 Reasonix can also read the common project-root `.mcp.json` shape; use the
 portable template when that is a better fit for the repository.
-Set `LLM_WIKI_VAULT` in the MCP server env when tool calls should default to a
-shared vault instead of requiring `path` every time.
+The setup command writes `LLM_WIKI_VAULT`; pass `--vault` to override the
+default `$HOME/workspace/knowledge-base/llm-wiki`.
 For the full smoke path, see `docs/host-mcp-smoke.md`.
 
 Suggested hook command shape:

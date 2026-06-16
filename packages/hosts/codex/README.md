@@ -9,13 +9,13 @@ Codex-specific plugin.
 Prefer the shared setup command:
 
 ```bash
-llm-wiki setup-hosts --apply --vault "$HOME/workspace/knowledge-base/llm-wiki" --json
+llm-wiki setup-hosts --apply --json
 ```
 
 For manual setup, copy `packages/hosts/codex/config.example.toml` into the
 relevant Codex configuration file and keep the server process as `llm-wiki mcp`.
-Set `LLM_WIKI_VAULT` in the MCP server env when tool calls should default to a
-shared vault instead of requiring `path` every time.
+The setup command writes `LLM_WIKI_VAULT`; pass `--vault` to override the
+default `$HOME/workspace/knowledge-base/llm-wiki`.
 
 User-level Codex configuration lives in `~/.codex/config.toml`. Project-scoped
 configuration can live in `.codex/config.toml` for trusted projects. If the

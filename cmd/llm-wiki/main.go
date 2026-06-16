@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/m16khb/llm-wiki/internal/daemon"
@@ -336,6 +339,13 @@ func setupHostsCmd() *cobra.Command {
 		Use:   "setup-hosts",
 		Short: "Configure Claude Code, Codex, and Reasonix to use llm-wiki mcp",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if vaultPath == "" && apply && !jsonOut {
+				promptedVault, err := promptVaultPath(cmd, home)
+				if err != nil {
+					return err
+				}
+				vaultPath = promptedVault
+			}
 			result, err := hostsetup.Setup(hostsetup.Options{
 				HomeDir:    home,
 				ProjectDir: project,
@@ -365,6 +375,23 @@ func setupHostsCmd() *cobra.Command {
 	cmd.Flags().StringVar(&bin, "bin", "", "llm-wiki binary path to use in host configs")
 	cmd.Flags().StringVar(&vaultPath, "vault", "", "default OKF vault path to pass as LLM_WIKI_VAULT")
 	return cmd
+}
+
+func promptVaultPath(cmd *cobra.Command, home string) (string, error) {
+	defaultVault, err := hostsetup.DefaultVaultPath(home)
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "Default OKF vault path [%s]: ", defaultVault)
+	line, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
+	if err != nil && err != io.EOF {
+		return "", err
+	}
+	value := strings.TrimSpace(line)
+	if value == "" {
+		return "", nil
+	}
+	return value, nil
 }
 
 func daemonCmd() *cobra.Command {

@@ -164,6 +164,31 @@ func TestSetupApplyWritesConfiguredVaultToHostConfigs(t *testing.T) {
 	}
 }
 
+func TestSetupDefaultsVaultPathFromHomeDir(t *testing.T) {
+	home := t.TempDir()
+	project := t.TempDir()
+	bin := filepath.Join(home, "bin", "llm-wiki")
+	wantVault := filepath.Join(home, "workspace", "knowledge-base", "llm-wiki")
+
+	result, err := Setup(Options{
+		HomeDir:    home,
+		ProjectDir: project,
+		BinaryPath: bin,
+		Apply:      true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.VaultPath != wantVault {
+		t.Fatalf("VaultPath = %q, want default %q", result.VaultPath, wantVault)
+	}
+
+	codexConfig := filepath.ToSlash(readFile(t, filepath.Join(home, ".codex", "config.toml")))
+	if !strings.Contains(codexConfig, `LLM_WIKI_VAULT = "`+filepath.ToSlash(wantVault)+`"`) {
+		t.Fatalf("codex config missing default vault env:\n%s", codexConfig)
+	}
+}
+
 func hasHost(result Result, name string) bool {
 	for _, host := range result.Hosts {
 		if host.Name == name {
