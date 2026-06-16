@@ -51,3 +51,55 @@ func TestSetupHostsCommandDefaultsToDryRun(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateCommandDefaultsToConfiguredVault(t *testing.T) {
+	t.Setenv("LLM_WIKI_VAULT", "../../fixtures/okf-minimal")
+	var stdout bytes.Buffer
+	cmd := rootCmd()
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"validate", "--json"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	var result struct {
+		OK           bool   `json:"ok"`
+		BundleRoot   string `json:"bundle_root"`
+		ConceptCount int    `json:"concept_count"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || result.BundleRoot == "" || result.ConceptCount != 1 {
+		t.Fatalf("result = %#v, want vault-backed valid OKF bundle", result)
+	}
+}
+
+func TestSetupHostsCommandAcceptsVaultPath(t *testing.T) {
+	home := t.TempDir()
+	project := t.TempDir()
+	vault := filepath.Join(home, "knowledge-base", "llm-wiki")
+	bin := filepath.Join(home, "bin", "llm-wiki")
+	var stdout bytes.Buffer
+	cmd := rootCmd()
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"setup-hosts", "--json", "--home", home, "--project", project, "--bin", bin, "--vault", vault})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	var result struct {
+		OK        bool   `json:"ok"`
+		VaultPath string `json:"vault_path"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || result.VaultPath != vault {
+		t.Fatalf("result = %#v, want configured vault path %q", result, vault)
+	}
+}

@@ -54,6 +54,28 @@ func TestServerValidateToolReturnsCLICompatibleDTO(t *testing.T) {
 	}
 }
 
+func TestServerValidateToolDefaultsToConfiguredVault(t *testing.T) {
+	t.Setenv("LLM_WIKI_VAULT", "../../fixtures/okf-minimal")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	clientSession, serverSession := connectTestServer(t, ctx)
+	defer serverSession.Wait()
+	defer clientSession.Close()
+
+	result, err := clientSession.CallTool(ctx, &mcpsdk.CallToolParams{
+		Name:      "llm_wiki_validate",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dto validate.Result
+	decodeStructured(t, result.StructuredContent, &dto)
+	if !dto.OK || dto.BundleRoot == "" || dto.ConceptCount != 1 {
+		t.Fatalf("dto = %#v, want vault-backed valid OKF bundle", dto)
+	}
+}
+
 func TestServerQueryPackToolReturnsContextOnly(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

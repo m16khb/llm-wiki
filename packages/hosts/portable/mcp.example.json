@@ -3,7 +3,9 @@
     "llm-wiki": {
       "command": "llm-wiki",
       "args": ["mcp"],
-      "env": {}
+      "env": {
+        "LLM_WIKI_VAULT": "/path/to/llm-wiki-vault"
+      }
     }
   }
 }

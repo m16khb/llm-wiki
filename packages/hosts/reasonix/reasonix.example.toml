@@ -3,3 +3,4 @@ name = "llm-wiki"
 type = "stdio"
 command = "llm-wiki"
 args = ["mcp"]
+env = { LLM_WIKI_VAULT = "/path/to/llm-wiki-vault" }

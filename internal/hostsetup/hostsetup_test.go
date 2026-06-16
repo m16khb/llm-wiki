@@ -123,6 +123,47 @@ command = "other"
 	}
 }
 
+func TestSetupApplyWritesConfiguredVaultToHostConfigs(t *testing.T) {
+	home := t.TempDir()
+	project := t.TempDir()
+	vault := filepath.Join(home, "knowledge-base", "llm-wiki")
+	bin := filepath.Join(home, "bin", "llm-wiki")
+
+	result, err := Setup(Options{
+		HomeDir:    home,
+		ProjectDir: project,
+		BinaryPath: bin,
+		VaultPath:  vault,
+		Apply:      true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.VaultPath != vault {
+		t.Fatalf("VaultPath = %q, want %q", result.VaultPath, vault)
+	}
+
+	codexConfig := filepath.ToSlash(readFile(t, filepath.Join(home, ".codex", "config.toml")))
+	for _, want := range []string{
+		`[mcp_servers.llm-wiki.env]`,
+		`LLM_WIKI_VAULT = "` + filepath.ToSlash(vault) + `"`,
+	} {
+		if !strings.Contains(codexConfig, want) {
+			t.Fatalf("codex config missing %q:\n%s", want, codexConfig)
+		}
+	}
+
+	claudeConfig := filepath.ToSlash(readFile(t, filepath.Join(project, ".mcp.json")))
+	if !strings.Contains(claudeConfig, `"LLM_WIKI_VAULT": "`+filepath.ToSlash(vault)+`"`) {
+		t.Fatalf("claude config missing vault env:\n%s", claudeConfig)
+	}
+
+	reasonixConfig := filepath.ToSlash(readFile(t, filepath.Join(project, "reasonix.toml")))
+	if !strings.Contains(reasonixConfig, `LLM_WIKI_VAULT = "`+filepath.ToSlash(vault)+`"`) {
+		t.Fatalf("reasonix config missing vault env:\n%s", reasonixConfig)
+	}
+}
+
 func hasHost(result Result, name string) bool {
 	for _, host := range result.Hosts {
 		if host.Name == name {

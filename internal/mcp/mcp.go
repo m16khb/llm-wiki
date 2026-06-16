@@ -9,6 +9,7 @@ import (
 	"github.com/m16khb/llm-wiki/internal/lint"
 	"github.com/m16khb/llm-wiki/internal/querypack"
 	"github.com/m16khb/llm-wiki/internal/validate"
+	"github.com/m16khb/llm-wiki/internal/vault"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -26,7 +27,7 @@ func Tools() []Tool {
 		{Name: "llm_wiki_graph", Description: "Return deterministic nodes and links for an OKF bundle.", InputSchema: pathSchema()},
 		{Name: "llm_wiki_query_pack", Description: "Return bounded context for a question and never synthesize an answer.", InputSchema: map[string]any{
 			"type":     "object",
-			"required": []string{"path", "question"},
+			"required": []string{"question"},
 			"properties": map[string]any{
 				"path":     map[string]any{"type": "string"},
 				"question": map[string]any{"type": "string"},
@@ -36,16 +37,16 @@ func Tools() []Tool {
 }
 
 type pathArgs struct {
-	Path string `json:"path" jsonschema:"Path to the OKF bundle root."`
+	Path string `json:"path,omitempty" jsonschema:"Path to the OKF bundle root. Defaults to LLM_WIKI_VAULT when omitted."`
 }
 
 type lintArgs struct {
-	Path string `json:"path" jsonschema:"Path to the OKF bundle root."`
+	Path string `json:"path,omitempty" jsonschema:"Path to the OKF bundle root. Defaults to LLM_WIKI_VAULT when omitted."`
 	Fix  bool   `json:"fix,omitempty" jsonschema:"Apply safe lint fixes such as index generation."`
 }
 
 type queryPackArgs struct {
-	Path     string `json:"path" jsonschema:"Path to the OKF bundle root."`
+	Path     string `json:"path,omitempty" jsonschema:"Path to the OKF bundle root. Defaults to LLM_WIKI_VAULT when omitted."`
 	Question string `json:"question" jsonschema:"Question used only for bounded context retrieval."`
 }
 
@@ -83,34 +84,53 @@ func RunStream(ctx context.Context, rwc io.ReadWriteCloser) error {
 }
 
 func validateTool(_ context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (*mcpsdk.CallToolResult, validate.Result, error) {
-	result, err := validate.Bundle(args.Path)
+	root, err := vault.Resolve(args.Path)
+	if err != nil {
+		return nil, validate.Result{}, err
+	}
+	result, err := validate.Bundle(root)
 	return nil, result, err
 }
 
 func lintTool(_ context.Context, _ *mcpsdk.CallToolRequest, args lintArgs) (*mcpsdk.CallToolResult, validate.Result, error) {
-	result, err := lint.Bundle(args.Path, args.Fix)
+	root, err := vault.Resolve(args.Path)
+	if err != nil {
+		return nil, validate.Result{}, err
+	}
+	result, err := lint.Bundle(root, args.Fix)
 	return nil, result, err
 }
 
 func indexTool(_ context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (*mcpsdk.CallToolResult, index.Result, error) {
-	result, err := index.Write(args.Path)
+	root, err := vault.Resolve(args.Path)
+	if err != nil {
+		return nil, index.Result{}, err
+	}
+	result, err := index.Write(root)
 	return nil, result, err
 }
 
 func graphTool(_ context.Context, _ *mcpsdk.CallToolRequest, args pathArgs) (*mcpsdk.CallToolResult, graph.Result, error) {
-	result, err := graph.Build(args.Path)
+	root, err := vault.Resolve(args.Path)
+	if err != nil {
+		return nil, graph.Result{}, err
+	}
+	result, err := graph.Build(root)
 	return nil, result, err
 }
 
 func queryPackTool(_ context.Context, _ *mcpsdk.CallToolRequest, args queryPackArgs) (*mcpsdk.CallToolResult, querypack.Result, error) {
-	result, err := querypack.Build(args.Path, args.Question)
+	root, err := vault.Resolve(args.Path)
+	if err != nil {
+		return nil, querypack.Result{}, err
+	}
+	result, err := querypack.Build(root, args.Question)
 	return nil, result, err
 }
 
 func pathSchema() map[string]any {
 	return map[string]any{
 		"type":       "object",
-		"required":   []string{"path"},
 		"properties": map[string]any{"path": map[string]any{"type": "string"}},
 	}
 }

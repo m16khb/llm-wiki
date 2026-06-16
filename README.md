@@ -43,6 +43,17 @@ llm-wiki daemon status --json
 llm-wiki mcp
 ```
 
+Set `LLM_WIKI_VAULT` to use a default OKF bundle when a command or MCP tool
+omits the path:
+
+```bash
+export LLM_WIKI_VAULT="$HOME/workspace/knowledge-base/llm-wiki"
+llm-wiki validate --json
+llm-wiki query-pack "alpha" --json
+```
+
+An explicit `<path>` always takes precedence over `LLM_WIKI_VAULT`.
+
 The stable validation DTO starts as:
 
 ```json
@@ -76,12 +87,14 @@ apply:
 
 ```bash
 llm-wiki setup-hosts --json
-llm-wiki setup-hosts --apply --json
+llm-wiki setup-hosts --apply --vault "$HOME/workspace/knowledge-base/llm-wiki" --json
 ```
 
 This writes Codex user MCP config plus project-local Claude Code and Reasonix
-MCP config that all call the same `llm-wiki mcp` binary. It does not remove old
-plugins or caches; delete legacy host integrations separately when needed.
+MCP config that all call the same `llm-wiki mcp` binary. When `--vault` is
+provided, host configs pass it as `LLM_WIKI_VAULT`. The setup command does not
+remove old plugins or caches; delete legacy host integrations separately when
+needed.
 
 ## Runtime Strategy
 

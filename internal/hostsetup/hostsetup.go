@@ -6,12 +6,15 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/m16khb/llm-wiki/internal/vault"
 )
 
 type Options struct {
 	HomeDir    string
 	ProjectDir string
 	BinaryPath string
+	VaultPath  string
 	Apply      bool
 }
 
@@ -20,6 +23,7 @@ type Result struct {
 	Applied    bool         `json:"applied"`
 	BinaryPath string       `json:"binary_path"`
 	ProjectDir string       `json:"project_dir"`
+	VaultPath  string       `json:"vault_path,omitempty"`
 	Hosts      []HostResult `json:"hosts"`
 	Warnings   []string     `json:"warnings"`
 }
@@ -43,6 +47,7 @@ func Setup(options Options) (Result, error) {
 		Applied:    resolved.Apply,
 		BinaryPath: resolved.BinaryPath,
 		ProjectDir: resolved.ProjectDir,
+		VaultPath:  resolved.VaultPath,
 		Warnings:   []string{},
 	}
 	hosts := []struct {
@@ -52,14 +57,14 @@ func Setup(options Options) (Result, error) {
 	}{
 		{name: "codex", path: filepath.Join(resolved.HomeDir, ".codex", "config.toml"), next: func() (string, error) {
 			current := readOptional(filepath.Join(resolved.HomeDir, ".codex", "config.toml"))
-			return upsertTOMLTable(current, "[mcp_servers.llm-wiki]", codexBlock(resolved.BinaryPath)), nil
+			return upsertTOMLTable(current, "[mcp_servers.llm-wiki]", codexBlock(resolved.BinaryPath, resolved.VaultPath)), nil
 		}},
 		{name: "claude", path: filepath.Join(resolved.ProjectDir, ".mcp.json"), next: func() (string, error) {
-			return upsertMCPJSON(readOptional(filepath.Join(resolved.ProjectDir, ".mcp.json")), resolved.BinaryPath)
+			return upsertMCPJSON(readOptional(filepath.Join(resolved.ProjectDir, ".mcp.json")), resolved.BinaryPath, resolved.VaultPath)
 		}},
 		{name: "reasonix", path: filepath.Join(resolved.ProjectDir, "reasonix.toml"), next: func() (string, error) {
 			current := readOptional(filepath.Join(resolved.ProjectDir, "reasonix.toml"))
-			return upsertReasonixPlugin(current, reasonixBlock(resolved.BinaryPath)), nil
+			return upsertReasonixPlugin(current, reasonixBlock(resolved.BinaryPath, resolved.VaultPath)), nil
 		}},
 	}
 	for _, host := range hosts {
@@ -129,28 +134,46 @@ func resolveOptions(options Options) (Options, error) {
 	if err != nil {
 		return Options{}, err
 	}
+	if options.VaultPath != "" {
+		options.VaultPath, err = filepath.Abs(options.VaultPath)
+		if err != nil {
+			return Options{}, err
+		}
+	}
 	return options, nil
 }
 
-func codexBlock(binary string) string {
-	return `[mcp_servers.llm-wiki]
-command = "` + filepath.ToSlash(binary) + `"
+func codexBlock(binary string, vaultPath string) string {
+	block := `[mcp_servers.llm-wiki]
+command = "` + tomlString(binary) + `"
 args = ["mcp"]
 startup_timeout_sec = 10
 tool_timeout_sec = 60
 `
+	if vaultPath != "" {
+		block += `
+[mcp_servers.llm-wiki.env]
+` + vault.EnvVar + ` = "` + tomlString(vaultPath) + `"
+`
+	}
+	return block
 }
 
-func reasonixBlock(binary string) string {
-	return `[[plugins]]
+func reasonixBlock(binary string, vaultPath string) string {
+	block := `[[plugins]]
 name = "llm-wiki"
 type = "stdio"
-command = "` + filepath.ToSlash(binary) + `"
+command = "` + tomlString(binary) + `"
 args = ["mcp"]
 `
+	if vaultPath != "" {
+		block += `env = { ` + vault.EnvVar + ` = "` + tomlString(vaultPath) + `" }
+`
+	}
+	return block
 }
 
-func upsertMCPJSON(current string, binary string) (string, error) {
+func upsertMCPJSON(current string, binary string, vaultPath string) (string, error) {
 	root := map[string]any{}
 	if strings.TrimSpace(current) != "" {
 		if err := json.Unmarshal([]byte(current), &root); err != nil {
@@ -162,10 +185,14 @@ func upsertMCPJSON(current string, binary string) (string, error) {
 		servers = map[string]any{}
 		root["mcpServers"] = servers
 	}
+	env := map[string]any{}
+	if vaultPath != "" {
+		env[vault.EnvVar] = filepath.ToSlash(vaultPath)
+	}
 	servers["llm-wiki"] = map[string]any{
 		"command": filepath.ToSlash(binary),
 		"args":    []string{"mcp"},
-		"env":     map[string]any{},
+		"env":     env,
 	}
 	out, err := json.MarshalIndent(root, "", "  ")
 	if err != nil {
@@ -186,7 +213,7 @@ func upsertTOMLTable(current string, header string, block string) string {
 			out = appendBlock(out, block)
 			replaced = true
 			i++
-			for i < len(lines) && !isTOMLHeader(lines[i]) {
+			for i < len(lines) && (!isTOMLHeader(lines[i]) || isChildTOMLHeader(lines[i], header)) {
 				i++
 			}
 			continue
@@ -246,6 +273,18 @@ func appendBlock(out []string, block string) []string {
 func isTOMLHeader(line string) bool {
 	trimmed := strings.TrimSpace(line)
 	return strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")
+}
+
+func isChildTOMLHeader(line string, parent string) bool {
+	trimmed := strings.TrimSpace(line)
+	parent = strings.TrimSuffix(strings.TrimSpace(parent), "]")
+	return strings.HasPrefix(trimmed, parent+".")
+}
+
+func tomlString(value string) string {
+	value = filepath.ToSlash(value)
+	value = strings.ReplaceAll(value, `\`, `\\`)
+	return strings.ReplaceAll(value, `"`, `\"`)
 }
 
 func cleanTrailingBlankLines(lines []string) string {

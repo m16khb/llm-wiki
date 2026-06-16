@@ -43,7 +43,7 @@ Use the shared setup command before host-specific debugging:
 
 ```bash
 llm-wiki setup-hosts --json
-llm-wiki setup-hosts --apply --json
+llm-wiki setup-hosts --apply --vault "$HOME/workspace/knowledge-base/llm-wiki" --json
 ```
 
 The dry-run reports the files that would change. `--apply` writes:
@@ -52,9 +52,10 @@ The dry-run reports the files that would change. `--apply` writes:
 - Claude Code project MCP config at `.mcp.json`
 - Reasonix project plugin config at `reasonix.toml`
 
-All three entries call the same `llm-wiki mcp` binary. The command does not
-remove legacy plugins or caches; clean those up separately if a host still loads
-an old integration.
+All three entries call the same `llm-wiki mcp` binary. When `--vault` is
+provided, host configs pass it as `LLM_WIKI_VAULT` so MCP tool calls can omit
+`path`. The command does not remove legacy plugins or caches; clean those up
+separately if a host still loads an old integration.
 
 Claude Code:
 
@@ -73,6 +74,9 @@ command = "llm-wiki"
 args = ["mcp"]
 startup_timeout_sec = 10
 tool_timeout_sec = 60
+
+[mcp_servers.llm-wiki.env]
+LLM_WIKI_VAULT = "/path/to/llm-wiki-vault"
 EOF
 CODEX_HOME="$tmp" codex mcp list
 rm -rf "$tmp"
@@ -143,8 +147,10 @@ End-to-end confirmation:
    `llm-wiki` is enabled.
 3. Ask Codex to call `llm_wiki_validate` on `fixtures/okf-minimal`.
 4. Confirm the result has `ok: true` and `concept_count: 1`.
-5. Ask Codex to call `llm_wiki_query_pack` with question `alpha`.
-6. Confirm the result has `context_only: true` and no synthesized answer.
+5. If `LLM_WIKI_VAULT` is configured, ask Codex to call `llm_wiki_validate`
+   without `path` and confirm the result uses the configured vault.
+6. Ask Codex to call `llm_wiki_query_pack` with question `alpha`.
+7. Confirm the result has `context_only: true` and no synthesized answer.
 
 ## Reasonix
 
@@ -170,8 +176,11 @@ End-to-end confirmation:
 2. Inspect `/mcp` and confirm the `llm-wiki` server is connected.
 3. Ask Reasonix to call `llm_wiki_validate` on `fixtures/okf-minimal`.
 4. Confirm the result has `ok: true` and `concept_count: 1`.
-5. Ask Reasonix to call `llm_wiki_graph` on `fixtures/okf-minimal`.
-6. Confirm the graph contains the `alpha.md` node.
+5. If `LLM_WIKI_VAULT` is configured, ask Reasonix to call
+   `llm_wiki_validate` without `path` and confirm the result uses the
+   configured vault.
+6. Ask Reasonix to call `llm_wiki_graph` on `fixtures/okf-minimal`.
+7. Confirm the graph contains the `alpha.md` node.
 
 ## Expected Tools
 

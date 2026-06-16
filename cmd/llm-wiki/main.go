@@ -19,6 +19,7 @@ import (
 	"github.com/m16khb/llm-wiki/internal/okf"
 	"github.com/m16khb/llm-wiki/internal/querypack"
 	"github.com/m16khb/llm-wiki/internal/validate"
+	"github.com/m16khb/llm-wiki/internal/vault"
 	"github.com/spf13/cobra"
 )
 
@@ -97,10 +98,14 @@ func initCmd() *cobra.Command {
 func validateCmd() *cobra.Command {
 	var jsonOut bool
 	cmd := &cobra.Command{
-		Use:  "validate <path>",
-		Args: cobra.ExactArgs(1),
+		Use:  "validate [path]",
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := validate.Bundle(args[0])
+			root, err := optionalRoot(args)
+			if err != nil {
+				return err
+			}
+			result, err := validate.Bundle(root)
 			if err != nil {
 				return err
 			}
@@ -125,10 +130,14 @@ func lintCmd() *cobra.Command {
 	var jsonOut bool
 	var fix bool
 	cmd := &cobra.Command{
-		Use:  "lint <path>",
-		Args: cobra.ExactArgs(1),
+		Use:  "lint [path]",
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := lint.Bundle(args[0], fix)
+			root, err := optionalRoot(args)
+			if err != nil {
+				return err
+			}
+			result, err := lint.Bundle(root, fix)
 			if err != nil {
 				return err
 			}
@@ -153,13 +162,17 @@ func lintCmd() *cobra.Command {
 func indexCmd() *cobra.Command {
 	var write bool
 	cmd := &cobra.Command{
-		Use:  "index <path>",
-		Args: cobra.ExactArgs(1),
+		Use:  "index [path]",
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !write {
 				return fmt.Errorf("index currently requires --write")
 			}
-			result, err := indexer.Write(args[0])
+			root, err := optionalRoot(args)
+			if err != nil {
+				return err
+			}
+			result, err := indexer.Write(root)
 			if err != nil {
 				return err
 			}
@@ -195,10 +208,14 @@ func logCmd() *cobra.Command {
 func graphCmd() *cobra.Command {
 	var jsonOut bool
 	cmd := &cobra.Command{
-		Use:  "graph <path>",
-		Args: cobra.ExactArgs(1),
+		Use:  "graph [path]",
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := graph.Build(args[0])
+			root, err := optionalRoot(args)
+			if err != nil {
+				return err
+			}
+			result, err := graph.Build(root)
 			if err != nil {
 				return err
 			}
@@ -216,10 +233,20 @@ func graphCmd() *cobra.Command {
 func queryPackCmd() *cobra.Command {
 	var jsonOut bool
 	cmd := &cobra.Command{
-		Use:  "query-pack <path> <question>",
-		Args: cobra.ExactArgs(2),
+		Use:  "query-pack [path] <question>",
+		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := querypack.Build(args[0], args[1])
+			rootArg := ""
+			question := args[0]
+			if len(args) == 2 {
+				rootArg = args[0]
+				question = args[1]
+			}
+			root, err := vault.Resolve(rootArg)
+			if err != nil {
+				return err
+			}
+			result, err := querypack.Build(root, question)
 			if err != nil {
 				return err
 			}
@@ -234,6 +261,13 @@ func queryPackCmd() *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "emit JSON")
 	return cmd
+}
+
+func optionalRoot(args []string) (string, error) {
+	if len(args) == 0 {
+		return vault.Resolve("")
+	}
+	return vault.Resolve(args[0])
 }
 
 func importCmd() *cobra.Command {
@@ -297,6 +331,7 @@ func setupHostsCmd() *cobra.Command {
 	var home string
 	var project string
 	var bin string
+	var vaultPath string
 	cmd := &cobra.Command{
 		Use:   "setup-hosts",
 		Short: "Configure Claude Code, Codex, and Reasonix to use llm-wiki mcp",
@@ -305,6 +340,7 @@ func setupHostsCmd() *cobra.Command {
 				HomeDir:    home,
 				ProjectDir: project,
 				BinaryPath: bin,
+				VaultPath:  vaultPath,
 				Apply:      apply,
 			})
 			if err != nil {
@@ -327,6 +363,7 @@ func setupHostsCmd() *cobra.Command {
 	cmd.Flags().StringVar(&home, "home", "", "home directory for user-level host config")
 	cmd.Flags().StringVar(&project, "project", "", "project directory for project-level host config")
 	cmd.Flags().StringVar(&bin, "bin", "", "llm-wiki binary path to use in host configs")
+	cmd.Flags().StringVar(&vaultPath, "vault", "", "default OKF vault path to pass as LLM_WIKI_VAULT")
 	return cmd
 }
 

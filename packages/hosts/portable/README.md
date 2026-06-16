@@ -13,4 +13,7 @@ For MCP clients that understand the common `mcpServers` JSON shape, adapt
 llm-wiki mcp
 ```
 
+Set `LLM_WIKI_VAULT` in the MCP server env when tool calls should default to a
+shared vault instead of requiring `path` every time.
+
 For host-neutral smoke checks, see `docs/host-mcp-smoke.md`.

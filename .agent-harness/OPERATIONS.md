@@ -21,11 +21,12 @@ First-time host setup should use the shared setup command:
 
 ```bash
 llm-wiki setup-hosts --json
-llm-wiki setup-hosts --apply --json
+llm-wiki setup-hosts --apply --vault "$HOME/workspace/knowledge-base/llm-wiki" --json
 ```
 
 This writes Codex user MCP config plus project-local Claude Code and Reasonix
-MCP config that all call `llm-wiki mcp`. It intentionally does not delete old
+MCP config that all call `llm-wiki mcp`. When `--vault` is provided, host
+configs pass it as `LLM_WIKI_VAULT`. It intentionally does not delete old
 plugins or caches; legacy cleanup is a separate explicit maintenance step.
 
 ## OKF Bundle Workflow
@@ -36,6 +37,17 @@ plugins or caches; legacy cleanup is a separate explicit maintenance step.
 - Apply safe index fixes: `llm-wiki lint <path> --fix` or `llm-wiki index <path> --write`
 - Append history: `llm-wiki log <path> append --op <op> --message <text>`
 - Build context: `llm-wiki graph <path> --json` and `llm-wiki query-pack <path> "<question>" --json`
+
+Set `LLM_WIKI_VAULT` to define the default OKF bundle root for CLI commands and
+MCP tools when the caller omits `path`:
+
+```bash
+export LLM_WIKI_VAULT="$HOME/workspace/knowledge-base/llm-wiki"
+llm-wiki validate --json
+llm-wiki query-pack "alpha" --json
+```
+
+Explicit path arguments still win over `LLM_WIKI_VAULT`.
 
 ## MCP
 
