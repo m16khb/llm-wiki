@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"syscall"
 	"testing"
+
+	"github.com/m16khb/llm-wiki/internal/vault"
 )
 
 func TestPathsPreferLLMWikiStateDir(t *testing.T) {
@@ -175,6 +177,57 @@ func TestCleanupSiblingDaemonsKeepsCurrentPIDAndStopsStaleSiblings(t *testing.T)
 	}
 	if len(warnings) != 1 || warnings[0] != "stopped stale daemon pid 111" {
 		t.Fatalf("warnings = %#v", warnings)
+	}
+}
+
+func TestDaemonVaultMatchesCurrentEnv(t *testing.T) {
+	originalVaultForPID := daemonVaultForPID
+	t.Cleanup(func() {
+		daemonVaultForPID = originalVaultForPID
+	})
+
+	t.Setenv(vault.EnvVar, "/tmp/current-vault")
+	daemonVaultForPID = func(pid int) (string, bool) {
+		if pid != 123 {
+			t.Fatalf("pid = %d, want 123", pid)
+		}
+		return "/tmp/current-vault", true
+	}
+
+	if !daemonVaultMatchesCurrentEnv(123) {
+		t.Fatal("daemonVaultMatchesCurrentEnv = false, want true for matching vault")
+	}
+}
+
+func TestDaemonVaultMatchesCurrentEnvDetectsMissingDaemonVault(t *testing.T) {
+	originalVaultForPID := daemonVaultForPID
+	t.Cleanup(func() {
+		daemonVaultForPID = originalVaultForPID
+	})
+
+	t.Setenv(vault.EnvVar, "/tmp/current-vault")
+	daemonVaultForPID = func(pid int) (string, bool) {
+		return "", false
+	}
+
+	if daemonVaultMatchesCurrentEnv(123) {
+		t.Fatal("daemonVaultMatchesCurrentEnv = true, want false when current proxy has a vault but daemon does not")
+	}
+}
+
+func TestDaemonVaultMatchesCurrentEnvDetectsStaleDaemonVault(t *testing.T) {
+	originalVaultForPID := daemonVaultForPID
+	t.Cleanup(func() {
+		daemonVaultForPID = originalVaultForPID
+	})
+
+	t.Setenv(vault.EnvVar, "/tmp/current-vault")
+	daemonVaultForPID = func(pid int) (string, bool) {
+		return "/tmp/old-vault", true
+	}
+
+	if daemonVaultMatchesCurrentEnv(123) {
+		t.Fatal("daemonVaultMatchesCurrentEnv = true, want false for stale daemon vault")
 	}
 }
 

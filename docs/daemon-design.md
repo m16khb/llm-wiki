@@ -25,8 +25,10 @@ llm-wiki mcp
 
 `status` and `doctor` exit `0` and report whether the daemon socket is
 reachable. `start` starts the background daemon when it is not already running
-and exits `0` with `running: true`. `stop` terminates the daemon if it is
-running and is idempotent when already stopped.
+and exits `0` with `running: true`. If the running daemon's `LLM_WIKI_VAULT`
+does not match the caller's environment, `start` restarts it so path-optional
+MCP tools resolve the same default vault as the host proxy. `stop` terminates
+the daemon if it is running and is idempotent when already stopped.
 
 `llm-wiki mcp --daemon` is accepted as a compatibility no-op; daemon-backed MCP
 is now the default behavior of `llm-wiki mcp`.

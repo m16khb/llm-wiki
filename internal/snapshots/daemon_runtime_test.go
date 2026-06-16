@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/m16khb/llm-wiki/internal/validate"
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -95,6 +96,51 @@ func TestMCPCommandAutoStartsDaemonAndProxiesTools(t *testing.T) {
 	}
 }
 
+func TestMCPCommandRestartsDaemonWhenVaultEnvChanges(t *testing.T) {
+	repo := repoRoot(t)
+	bin := buildCLI(t, repo)
+	stateDir := shortTempDir(t)
+	stateEnv := "LLM_WIKI_STATE_DIR=" + stateDir
+	t.Cleanup(func() {
+		_ = runCLI(t, repo, bin, []string{stateEnv}, "daemon", "stop", "--json")
+	})
+
+	startedWithoutVault := runDaemonStatus(t, repo, bin, []string{stateEnv, "LLM_WIKI_VAULT="}, "start")
+	if !startedWithoutVault.Running || startedWithoutVault.PID == 0 {
+		t.Fatalf("initial daemon start = %#v, want running daemon without vault env", startedWithoutVault)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.Command(bin, "mcp")
+	cmd.Dir = repo
+	cmd.Env = append(os.Environ(), stateEnv, "LLM_WIKI_VAULT="+filepath.Join(repo, "fixtures", "okf-minimal"))
+	client := mcpsdk.NewClient(&mcpsdk.Implementation{Name: "llm-wiki-daemon-vault-test"}, nil)
+	session, err := client.Connect(ctx, &mcpsdk.CommandTransport{Command: cmd}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+
+	result, err := session.CallTool(ctx, &mcpsdk.CallToolParams{
+		Name:      "llm_wiki_validate",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dto validate.Result
+	decodeStructuredContent(t, result.StructuredContent, &dto)
+	if !dto.OK || dto.ConceptCount != 1 {
+		t.Fatalf("dto = %#v, want validate to default to proxy vault env", dto)
+	}
+
+	restartedWithVault := runDaemonStatus(t, repo, bin, []string{stateEnv}, "status")
+	if restartedWithVault.PID == startedWithoutVault.PID {
+		t.Fatalf("daemon pid = %d, want restart from stale no-vault daemon", restartedWithVault.PID)
+	}
+}
+
 func buildCLI(t *testing.T, repo string) string {
 	t.Helper()
 	bin := filepath.Join(t.TempDir(), "llm-wiki")
@@ -104,6 +150,17 @@ func buildCLI(t *testing.T, repo string) string {
 		t.Fatalf("build CLI: %v\n%s", err, out)
 	}
 	return bin
+}
+
+func decodeStructuredContent(t *testing.T, value any, out any) {
+	t.Helper()
+	data, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, out); err != nil {
+		t.Fatalf("decode structured content: %v\n%s", err, data)
+	}
 }
 
 func shortTempDir(t *testing.T) string {

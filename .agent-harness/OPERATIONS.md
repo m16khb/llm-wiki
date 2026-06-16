@@ -79,10 +79,12 @@ The daemon resolves runtime state in this order:
 
 Daemon files are `daemon.sock`, `daemon.pid`, `daemon.lock`, and `daemon.log`.
 `daemon status` and `daemon doctor` are safe probes. `daemon start` creates the
-state directory and starts the socket server when needed; it also best-effort
-stops stale sibling daemon processes that use the same resolved state directory
-while leaving other state directories alone. `daemon stop` terminates the
-state-dir daemon and is safe to run when already stopped.
+state directory and starts the socket server when needed; it also restarts a
+running state-dir daemon whose `LLM_WIKI_VAULT` differs from the caller's
+environment, and best-effort stops stale sibling daemon processes that use the
+same resolved state directory while leaving other state directories alone.
+`daemon stop` terminates the state-dir daemon and is safe to run when already
+stopped.
 
 ## Project Docs
 

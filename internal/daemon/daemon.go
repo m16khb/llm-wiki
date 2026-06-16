@@ -18,6 +18,7 @@ import (
 
 	"github.com/gofrs/flock"
 	wikimcp "github.com/m16khb/llm-wiki/internal/mcp"
+	"github.com/m16khb/llm-wiki/internal/vault"
 )
 
 const (
@@ -39,6 +40,7 @@ var (
 	currentExecutable     = os.Executable
 	findSiblingDaemonPIDs = defaultFindSiblingDaemonPIDs
 	daemonStateDirForPID  = defaultDaemonStateDirForPID
+	daemonVaultForPID     = defaultDaemonVaultForPID
 	processAlivePID       = processAlive
 	signalPID             = signalProcess
 	killPID               = killProcess
@@ -114,9 +116,9 @@ func Start() (Result, error) {
 }
 
 func EnsureRunning() (Result, error) {
-	if result, err := statusResult("start"); err == nil && result.Running {
-		result.Warnings = append(result.Warnings, cleanupSiblingDaemons(result.StateDir, result.PID)...)
-		return result, nil
+	restartWarnings := []string{}
+	if result, done, err := useRunningDaemonIfCompatible("start", &restartWarnings); err != nil || done {
+		return result, err
 	}
 	paths, err := ResolvePaths()
 	if err != nil {
@@ -133,15 +135,25 @@ func EnsureRunning() (Result, error) {
 		return Result{}, err
 	}
 	if !locked {
-		return waitForRunning("start", paths, readyTimeout)
+		result, err := waitForRunning("start", paths, readyTimeout)
+		if err != nil || !result.Running || daemonVaultMatchesCurrentEnv(result.PID) {
+			return result, err
+		}
+		warnings, err := stopDaemonForVaultMismatch(result)
+		result.Warnings = append(result.Warnings, warnings...)
+		if err != nil {
+			result.OK = false
+			result.Message = err.Error()
+			return result, err
+		}
+		return EnsureRunning()
 	}
 	defer func() {
 		_ = lock.Unlock()
 		_ = os.Remove(paths.LockPath)
 	}()
-	if result, err := statusResult("start"); err == nil && result.Running {
-		result.Warnings = append(result.Warnings, cleanupSiblingDaemons(result.StateDir, result.PID)...)
-		return result, nil
+	if result, done, err := useRunningDaemonIfCompatible("start", &restartWarnings); err != nil || done {
+		return result, err
 	}
 	_ = os.Remove(paths.SocketPath)
 	exe, err := currentExecutable()
@@ -162,8 +174,29 @@ func EnsureRunning() (Result, error) {
 	if err != nil {
 		return result, err
 	}
+	result.Warnings = append(restartWarnings, result.Warnings...)
 	result.Warnings = append(result.Warnings, cleanupSiblingDaemons(result.StateDir, result.PID)...)
 	return result, nil
+}
+
+func useRunningDaemonIfCompatible(action string, restartWarnings *[]string) (Result, bool, error) {
+	result, err := statusResult(action)
+	if err != nil || !result.Running {
+		return result, false, err
+	}
+	if daemonVaultMatchesCurrentEnv(result.PID) {
+		result.Warnings = append(result.Warnings, cleanupSiblingDaemons(result.StateDir, result.PID)...)
+		return result, true, nil
+	}
+	warnings, err := stopDaemonForVaultMismatch(result)
+	*restartWarnings = append(*restartWarnings, warnings...)
+	if err != nil {
+		result.OK = false
+		result.Message = err.Error()
+		result.Warnings = append(result.Warnings, warnings...)
+		return result, true, err
+	}
+	return result, false, nil
 }
 
 func daemonServerCommand(exe string, paths Paths, logFile *os.File) *exec.Cmd {
@@ -174,6 +207,26 @@ func daemonServerCommand(exe string, paths Paths, logFile *os.File) *exec.Cmd {
 	cmd.Stderr = logFile
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	return cmd
+}
+
+func daemonVaultMatchesCurrentEnv(pid int) bool {
+	current := strings.TrimSpace(os.Getenv(vault.EnvVar))
+	daemonValue, ok := daemonVaultForPID(pid)
+	daemonValue = strings.TrimSpace(daemonValue)
+	if current == "" {
+		return !ok || daemonValue == ""
+	}
+	return ok && daemonValue == current
+}
+
+func stopDaemonForVaultMismatch(result Result) ([]string, error) {
+	warnings := []string{fmt.Sprintf("stopped daemon pid %d because %s changed", result.PID, vault.EnvVar)}
+	if err := stopProcess(result.PID, staleStopTimeout); err != nil {
+		return warnings, fmt.Errorf("restart daemon for %s change: %w", vault.EnvVar, err)
+	}
+	_ = os.Remove(result.SocketPath)
+	_ = os.Remove(result.PIDPath)
+	return warnings, nil
 }
 
 func Stop() (Result, error) {
@@ -276,13 +329,21 @@ func defaultFindSiblingDaemonPIDs(exe string) ([]int, error) {
 }
 
 func defaultDaemonStateDirForPID(pid int) (string, bool) {
+	return envVarForPID(pid, stateDirEnv)
+}
+
+func defaultDaemonVaultForPID(pid int) (string, bool) {
+	return envVarForPID(pid, vault.EnvVar)
+}
+
+func envVarForPID(pid int, name string) (string, bool) {
 	out, err := exec.Command("ps", "eww", "-p", strconv.Itoa(pid), "-o", "command=").Output()
 	if err != nil {
 		return "", false
 	}
 	for _, field := range strings.Fields(string(out)) {
-		if strings.HasPrefix(field, stateDirEnv+"=") {
-			return strings.TrimPrefix(field, stateDirEnv+"="), true
+		if strings.HasPrefix(field, name+"=") {
+			return strings.TrimPrefix(field, name+"="), true
 		}
 	}
 	return "", false
