@@ -34,4 +34,4 @@ Claude Code, Codex, Reasonix, and portable agents should invoke the same CLI/MCP
 
 ## Runtime Strategy
 
-`llm-wiki mcp` is the default and supported MCP runtime, and it is daemon-backed. The command auto-starts or connects to the user-level daemon, then proxies stdio MCP bytes to the daemon Unix socket. `llm-wiki daemon start/status/doctor/stop` manage the shared backend process. Host templates should keep using plain `llm-wiki mcp`; `--daemon` is accepted only as a compatibility no-op because daemon-backed MCP is now the default.
+`llm-wiki mcp` is the default and supported MCP runtime, and it is daemon-backed. The command auto-starts or connects to the user-level daemon, then proxies stdio MCP bytes to the daemon Unix socket. Each host agent may run its own short-lived `llm-wiki mcp` stdio proxy, but those proxies share one daemon per resolved daemon state directory. `llm-wiki daemon start/status/doctor/stop` manage the shared backend process. Host templates should keep using plain `llm-wiki mcp`; `--daemon` is accepted only as a compatibility no-op because daemon-backed MCP is now the default.

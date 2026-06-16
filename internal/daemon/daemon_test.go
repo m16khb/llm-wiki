@@ -3,6 +3,7 @@ package daemon
 import (
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 )
 
@@ -99,6 +100,93 @@ func TestStopIsIdempotentWhenDaemonIsNotRunning(t *testing.T) {
 	for _, path := range []string{result.SocketPath, result.PIDPath, result.LockPath} {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Fatalf("%s exists or stat failed with unexpected error: %v", path, err)
+		}
+	}
+}
+
+func TestDaemonServerCommandDetachesFromParentSession(t *testing.T) {
+	logFile, err := os.CreateTemp(t.TempDir(), "daemon-*.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer logFile.Close()
+
+	paths := Paths{StateDir: t.TempDir()}
+	cmd := daemonServerCommand("/tmp/llm-wiki", paths, logFile)
+
+	if cmd.SysProcAttr == nil || !cmd.SysProcAttr.Setsid {
+		t.Fatalf("SysProcAttr = %#v, want Setsid=true so daemon survives parent shell exit", cmd.SysProcAttr)
+	}
+	if cmd.Stdin != nil || cmd.Stdout != logFile || cmd.Stderr != logFile {
+		t.Fatalf("stdio not daemon-safe: stdin=%#v stdout=%#v stderr=%#v", cmd.Stdin, cmd.Stdout, cmd.Stderr)
+	}
+}
+
+func TestCleanupSiblingDaemonsKeepsCurrentPIDAndStopsStaleSiblings(t *testing.T) {
+	originalExecutable := currentExecutable
+	originalFind := findSiblingDaemonPIDs
+	originalStateDir := daemonStateDirForPID
+	originalProcessAlive := processAlivePID
+	originalSignal := signalPID
+	originalKill := killPID
+	t.Cleanup(func() {
+		currentExecutable = originalExecutable
+		findSiblingDaemonPIDs = originalFind
+		daemonStateDirForPID = originalStateDir
+		processAlivePID = originalProcessAlive
+		signalPID = originalSignal
+		killPID = originalKill
+	})
+
+	currentExecutable = func() (string, error) { return "/tmp/llm-wiki", nil }
+	findSiblingDaemonPIDs = func(exe string) ([]int, error) {
+		if exe != "/tmp/llm-wiki" {
+			t.Fatalf("exe = %q", exe)
+		}
+		return []int{111, 222, 333, os.Getpid()}, nil
+	}
+	daemonStateDirForPID = func(pid int) (string, bool) {
+		switch pid {
+		case 111, 222:
+			return "/tmp/state-a", true
+		case 333:
+			return "/tmp/state-b", true
+		default:
+			return "", false
+		}
+	}
+	signaled := []int{}
+	processAlivePID = func(pid int) bool { return false }
+	signalPID = func(pid int, signal syscall.Signal) error {
+		if signal != syscall.SIGTERM {
+			t.Fatalf("signal = %v, want SIGTERM", signal)
+		}
+		signaled = append(signaled, pid)
+		return nil
+	}
+	killPID = func(pid int) error {
+		t.Fatalf("killPID(%d) called for already-dead fake process", pid)
+		return nil
+	}
+
+	warnings := cleanupSiblingDaemons("/tmp/state-a", 222)
+	if len(signaled) != 1 || signaled[0] != 111 {
+		t.Fatalf("signaled = %v, want only stale pid 111", signaled)
+	}
+	if len(warnings) != 1 || warnings[0] != "stopped stale daemon pid 111" {
+		t.Fatalf("warnings = %#v", warnings)
+	}
+}
+
+func TestParsePIDsIgnoresNonNumericLines(t *testing.T) {
+	got := parsePIDs("123\nnot-a-pid\n456\n")
+	want := []int{123, 456}
+	if len(got) != len(want) {
+		t.Fatalf("parsePIDs = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("parsePIDs = %v, want %v", got, want)
 		}
 	}
 }

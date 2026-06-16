@@ -51,7 +51,7 @@ Explicit path arguments still win over `LLM_WIKI_VAULT`.
 
 ## MCP
 
-Run `llm-wiki mcp` as the stdio MCP proxy. It auto-starts or connects to the shared user-level daemon, then proxies MCP JSON-RPC bytes to the daemon socket. Initial tools are `llm_wiki_validate`, `llm_wiki_lint`, `llm_wiki_index`, `llm_wiki_graph`, and `llm_wiki_query_pack`. These tools call the same internal service packages used by the CLI.
+Run `llm-wiki mcp` as the stdio MCP proxy. It auto-starts or connects to the shared user-level daemon, then proxies MCP JSON-RPC bytes to the daemon socket. Multiple host agents can each run a proxy, but they should converge on one daemon for the same daemon state directory. Initial tools are `llm_wiki_validate`, `llm_wiki_lint`, `llm_wiki_index`, `llm_wiki_graph`, and `llm_wiki_query_pack`. These tools call the same internal service packages used by the CLI.
 
 Baseline MCP smoke:
 
@@ -79,8 +79,10 @@ The daemon resolves runtime state in this order:
 
 Daemon files are `daemon.sock`, `daemon.pid`, `daemon.lock`, and `daemon.log`.
 `daemon status` and `daemon doctor` are safe probes. `daemon start` creates the
-state directory and starts the socket server when needed; `daemon stop`
-terminates it and is safe to run when already stopped.
+state directory and starts the socket server when needed; it also best-effort
+stops stale sibling daemon processes that use the same resolved state directory
+while leaving other state directories alone. `daemon stop` terminates the
+state-dir daemon and is safe to run when already stopped.
 
 ## Project Docs
 

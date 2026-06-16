@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -31,6 +32,16 @@ const (
 	defaultStatePath = ".local/state/llm-wiki"
 	readyTimeout     = 15 * time.Second
 	maxConnections   = 64
+	staleStopTimeout = time.Second
+)
+
+var (
+	currentExecutable     = os.Executable
+	findSiblingDaemonPIDs = defaultFindSiblingDaemonPIDs
+	daemonStateDirForPID  = defaultDaemonStateDirForPID
+	processAlivePID       = processAlive
+	signalPID             = signalProcess
+	killPID               = killProcess
 )
 
 type Paths struct {
@@ -104,6 +115,7 @@ func Start() (Result, error) {
 
 func EnsureRunning() (Result, error) {
 	if result, err := statusResult("start"); err == nil && result.Running {
+		result.Warnings = append(result.Warnings, cleanupSiblingDaemons(result.StateDir, result.PID)...)
 		return result, nil
 	}
 	paths, err := ResolvePaths()
@@ -128,10 +140,11 @@ func EnsureRunning() (Result, error) {
 		_ = os.Remove(paths.LockPath)
 	}()
 	if result, err := statusResult("start"); err == nil && result.Running {
+		result.Warnings = append(result.Warnings, cleanupSiblingDaemons(result.StateDir, result.PID)...)
 		return result, nil
 	}
 	_ = os.Remove(paths.SocketPath)
-	exe, err := os.Executable()
+	exe, err := currentExecutable()
 	if err != nil {
 		return Result{}, err
 	}
@@ -140,16 +153,27 @@ func EnsureRunning() (Result, error) {
 		return Result{}, err
 	}
 	defer logFile.Close()
+	cmd := daemonServerCommand(exe, paths, logFile)
+	if err := cmd.Start(); err != nil {
+		return Result{OK: false, Action: "start", Implemented: true, StateDir: paths.StateDir, SocketPath: paths.SocketPath, PIDPath: paths.PIDPath, LockPath: paths.LockPath, Message: err.Error()}, err
+	}
+	_ = cmd.Process.Release()
+	result, err := waitForRunning("start", paths, readyTimeout)
+	if err != nil {
+		return result, err
+	}
+	result.Warnings = append(result.Warnings, cleanupSiblingDaemons(result.StateDir, result.PID)...)
+	return result, nil
+}
+
+func daemonServerCommand(exe string, paths Paths, logFile *os.File) *exec.Cmd {
 	cmd := exec.Command(exe, "daemon", "--internal")
 	cmd.Env = append(os.Environ(), stateDirEnv+"="+paths.StateDir)
 	cmd.Stdin = nil
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
-	if err := cmd.Start(); err != nil {
-		return Result{OK: false, Action: "start", Implemented: true, StateDir: paths.StateDir, SocketPath: paths.SocketPath, PIDPath: paths.PIDPath, LockPath: paths.LockPath, Message: err.Error()}, err
-	}
-	_ = cmd.Process.Release()
-	return waitForRunning("start", paths, readyTimeout)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	return cmd
 }
 
 func Stop() (Result, error) {
@@ -158,6 +182,7 @@ func Stop() (Result, error) {
 		return result, err
 	}
 	if !result.Running {
+		result.Warnings = append(result.Warnings, cleanupSiblingDaemons(result.StateDir, 0)...)
 		_ = os.Remove(result.SocketPath)
 		_ = os.Remove(result.PIDPath)
 		_ = os.Remove(result.LockPath)
@@ -178,6 +203,7 @@ func Stop() (Result, error) {
 			return current, err
 		}
 		if !current.Running {
+			current.Warnings = append(current.Warnings, cleanupSiblingDaemons(current.StateDir, 0)...)
 			current.OK = true
 			current.Message = stoppedMessage
 			return current, nil
@@ -185,12 +211,110 @@ func Stop() (Result, error) {
 		time.Sleep(50 * time.Millisecond)
 	}
 	_ = proc.Kill()
+	result.Warnings = append(result.Warnings, cleanupSiblingDaemons(result.StateDir, 0)...)
 	_ = os.Remove(result.SocketPath)
 	_ = os.Remove(result.PIDPath)
 	result.Running = false
 	result.OK = true
 	result.Message = stoppedMessage
 	return result, nil
+}
+
+func cleanupSiblingDaemons(stateDir string, keepPID int) []string {
+	exe, err := currentExecutable()
+	if err != nil {
+		return []string{fmt.Sprintf("could not inspect daemon siblings: %v", err)}
+	}
+	pids, err := findSiblingDaemonPIDs(exe)
+	if err != nil {
+		return []string{fmt.Sprintf("could not inspect daemon siblings: %v", err)}
+	}
+	warnings := []string{}
+	for _, pid := range pids {
+		if pid <= 0 || pid == os.Getpid() || pid == keepPID {
+			continue
+		}
+		pidStateDir, ok := daemonStateDirForPID(pid)
+		if !ok || pidStateDir != stateDir {
+			continue
+		}
+		if err := stopProcess(pid, staleStopTimeout); err != nil {
+			warnings = append(warnings, fmt.Sprintf("could not stop stale daemon pid %d: %v", pid, err))
+			continue
+		}
+		warnings = append(warnings, fmt.Sprintf("stopped stale daemon pid %d", pid))
+	}
+	return warnings
+}
+
+func stopProcess(pid int, timeout time.Duration) error {
+	if err := signalPID(pid, syscall.SIGTERM); err != nil {
+		return err
+	}
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if !processAlivePID(pid) {
+			return nil
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if err := killPID(pid); err != nil {
+		return err
+	}
+	return nil
+}
+
+func defaultFindSiblingDaemonPIDs(exe string) ([]int, error) {
+	out, err := exec.Command("pgrep", "-f", regexp.QuoteMeta(exe)+" daemon --internal").Output()
+	if err != nil {
+		if exit, ok := err.(*exec.ExitError); ok && exit.ExitCode() == 1 {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return parsePIDs(string(out)), nil
+}
+
+func defaultDaemonStateDirForPID(pid int) (string, bool) {
+	out, err := exec.Command("ps", "eww", "-p", strconv.Itoa(pid), "-o", "command=").Output()
+	if err != nil {
+		return "", false
+	}
+	for _, field := range strings.Fields(string(out)) {
+		if strings.HasPrefix(field, stateDirEnv+"=") {
+			return strings.TrimPrefix(field, stateDirEnv+"="), true
+		}
+	}
+	return "", false
+}
+
+func parsePIDs(output string) []int {
+	lines := strings.Fields(output)
+	pids := make([]int, 0, len(lines))
+	for _, line := range lines {
+		pid, err := strconv.Atoi(line)
+		if err != nil {
+			continue
+		}
+		pids = append(pids, pid)
+	}
+	return pids
+}
+
+func signalProcess(pid int, signal syscall.Signal) error {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	return proc.Signal(signal)
+}
+
+func killProcess(pid int) error {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	return proc.Kill()
 }
 
 func RunServer(ctx context.Context) error {
