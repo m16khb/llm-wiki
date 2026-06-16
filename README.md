@@ -11,6 +11,10 @@ synthesis outside the core: host agents may read query packs and decide what to
 write, while `llm-wiki` validates, lints, indexes, logs, graphs, and packages
 bounded context.
 
+`query-pack` is a graph traversal seed provider, not an answer engine. It
+selects deterministic local OKF concepts for a question and leaves final answer
+synthesis to the host agent.
+
 ## Install From Source
 
 ```bash
@@ -122,6 +126,12 @@ the CLI. Initial tools:
 - `llm_wiki_index`
 - `llm_wiki_graph`
 - `llm_wiki_query_pack`
+
+Host agents should call `llm_wiki_query_pack` first. If it returns contexts,
+answer from those concept paths and optionally inspect nearby concepts with
+`llm_wiki_graph`. If it returns no contexts, report that the vault lacks enough
+grounding instead of filling the gap with unstated world knowledge. Citations
+should use concept paths from the returned contexts.
 
 ## Verification
 

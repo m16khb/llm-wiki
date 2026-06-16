@@ -1,10 +1,13 @@
 package querypack
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/m16khb/llm-wiki/internal/okf"
 )
+
+const maxContexts = 8
 
 type Context struct {
 	Path    string `json:"path"`
@@ -26,24 +29,69 @@ func Build(root, question string) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	q := strings.ToLower(question)
 	result := Result{OK: true, BundleRoot: bundle.Root, Question: question, ContextOnly: true, Contexts: []Context{}}
-	for _, concept := range bundle.Concepts {
-		haystack := strings.ToLower(concept.RelPath + "\n" + concept.Title + "\n" + concept.Body)
-		if q == "" || strings.Contains(haystack, q) {
-			result.Contexts = append(result.Contexts, Context{Path: concept.RelPath, Title: concept.Title, Snippet: snippet(concept.Body, 500)})
+	if strings.TrimSpace(question) == "" {
+		for _, concept := range bundle.Concepts {
+			result.Contexts = append(result.Contexts, contextFor(concept, nil))
+			if len(result.Contexts) >= maxContexts {
+				break
+			}
 		}
-		if len(result.Contexts) >= 8 {
-			break
-		}
+		return result, nil
 	}
+	result.Contexts = selectContexts(bundle, question)
 	return result, nil
 }
 
-func snippet(body string, max int) string {
-	body = strings.TrimSpace(body)
-	if len(body) <= max {
-		return body
+type scoredConcept struct {
+	concept okf.Concept
+	score   int
+}
+
+func selectContexts(bundle *okf.Bundle, question string) []Context {
+	tokens := queryTokens(question)
+	if len(tokens) == 0 {
+		return []Context{}
 	}
-	return body[:max] + "...[truncated]"
+	q := strings.ToLower(strings.TrimSpace(question))
+	scored := []scoredConcept{}
+	for _, concept := range bundle.Concepts {
+		score := conceptScore(concept, q, tokens)
+		if score == 0 {
+			continue
+		}
+		scored = append(scored, scoredConcept{concept: concept, score: score})
+	}
+	sort.Slice(scored, func(i, j int) bool {
+		if scored[i].score != scored[j].score {
+			return scored[i].score > scored[j].score
+		}
+		return scored[i].concept.RelPath < scored[j].concept.RelPath
+	})
+
+	contexts := []Context{}
+	seen := map[string]bool{}
+	for _, candidate := range scored {
+		contexts = append(contexts, contextFor(candidate.concept, tokens))
+		seen[candidate.concept.RelPath] = true
+		if len(contexts) >= maxContexts {
+			return contexts
+		}
+	}
+
+	byPath, outbound, inbound := graphMaps(bundle)
+	for _, seed := range scored {
+		for _, neighbor := range append(outbound[seed.concept.RelPath], inbound[seed.concept.RelPath]...) {
+			concept, ok := byPath[neighbor]
+			if !ok || seen[neighbor] {
+				continue
+			}
+			contexts = append(contexts, contextFor(concept, nil))
+			seen[neighbor] = true
+			if len(contexts) >= maxContexts {
+				return contexts
+			}
+		}
+	}
+	return contexts
 }

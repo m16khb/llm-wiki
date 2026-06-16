@@ -25,7 +25,7 @@ func Tools() []Tool {
 		{Name: "llm_wiki_lint", Description: "Lint an OKF bundle for quality warnings without synthesizing answers.", InputSchema: pathSchema()},
 		{Name: "llm_wiki_index", Description: "Write a deterministic index.md for an OKF bundle.", InputSchema: pathSchema()},
 		{Name: "llm_wiki_graph", Description: "Return deterministic nodes and links for an OKF bundle.", InputSchema: pathSchema()},
-		{Name: "llm_wiki_query_pack", Description: "Return bounded context for a question and never synthesize an answer.", InputSchema: map[string]any{
+		{Name: "llm_wiki_query_pack", Description: "Return a deterministic graph traversal seed pack for a question; never synthesize an answer.", InputSchema: map[string]any{
 			"type":     "object",
 			"required": []string{"question"},
 			"properties": map[string]any{
@@ -70,7 +70,7 @@ func NewServer() *mcpsdk.Server {
 	}, graphTool)
 	mcpsdk.AddTool(server, &mcpsdk.Tool{
 		Name:        "llm_wiki_query_pack",
-		Description: "Return bounded context for a question and never synthesize an answer.",
+		Description: "Return a deterministic graph traversal seed pack for a question; never synthesize an answer.",
 	}, queryPackTool)
 	return server
 }
